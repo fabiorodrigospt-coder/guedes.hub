@@ -57,3 +57,7 @@ Publicação: o código validado foi promovido para main por atualização atôm
 - Edge gh-login ativa: autentica nome+senha no Auth, limites por nome, sem expor e-mail ou senha. Edge gh-usuarios atualizada para cadastros com e-mail técnico, nomes de acesso, senha mínima 6, edição de e-mail/senha e exclusão.
 - SQL real com rollback e suíte completa passaram; nome/senha no navegador testados com API simulada. Endpoint real retornou 401 para credenciais inválidas. Nenhuma conta operacional criada nem senha existente alterada automaticamente.
 - Publicação 5.6 no endereço de teste; administrador define os nomes de acesso cadastrando ou editando as contas. Seu login atual por e-mail continua válido.
+
+
+## Versão 5.7 — identificação automática nos relatórios
+Relatórios novos de produção e salgados preenchem responsável/líder com o nome do perfil autenticado. Trocar a data de uma produção nova mantém esse preenchimento. Abrir relatórios existentes preserva o nome registrado. Não altera contas, permissões ou dados históricos.

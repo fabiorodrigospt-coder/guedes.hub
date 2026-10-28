@@ -112,3 +112,7 @@ Se houver uma falha de rede durante um cadastro, atualizar a lista antes de tent
 `db/login_simples.sql` registra a migração complementar aplicada após `db/usuarios_acessos.sql`. Implantar também `supabase/functions/gh-login/` e atualizar `gh-usuarios`, incluindo `import_map_path=deno.json` quando substituir a função existente.
 
 Validação: `tests/login.sql` no banco real, com rollback, confirmou unicidade, resolução restrita, limite de tentativas, exclusão preservando pedidos, bloqueio da sessão e restauração. Testes do endpoint, cadastro sem e-mail, senha de 6 caracteres, entrada por nome, edição/exclusão/restauração e regressões operacionais passaram com API simulada. Endpoint real de login recusou credenciais inválidas com 401. Nenhuma senha ou conta existente foi alterada automaticamente.
+
+
+## Versão 5.7 — identificação automática nos relatórios
+Relatórios novos de produção e salgados preenchem responsável/líder com o nome do perfil autenticado. Trocar a data de uma produção nova mantém esse preenchimento. Abrir relatórios existentes preserva o nome registrado. Não altera contas, permissões ou dados históricos.

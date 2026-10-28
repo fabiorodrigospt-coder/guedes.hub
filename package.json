@@ -1,6 +1,6 @@
 {
   "name": "guedes-hub",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "private": true,
   "scripts": {
     "test": "node tests/reader.test.cjs && node tests/login-server.test.cjs && node tests/users-server.test.cjs && node tests/browser.test.cjs && node tests/worker.test.cjs"

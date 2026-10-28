@@ -1,7 +1,7 @@
 'use strict';
 const APP='gh-online-'+new URL(self.registration.scope).pathname.replace(/[^a-z0-9]/gi,'_');
-const CACHE=APP+'-5-6-v1';
-const FILES=['./','./index.html','./workspace.html','./frame-bridge.js?v=5.6','./cloud.js?v=5.6','./navigation.js?v=5.6','./users.js?v=5.6','./online.css?v=5.6','./manifest.webmanifest','./vendor/supabase-2.118.0.js','./casa-guedes-logo.png','./icon-192.png','./icon-512.png'];
+const CACHE=APP+'-5-7-v1';
+const FILES=['./','./index.html','./workspace.html','./frame-bridge.js?v=5.7','./cloud.js?v=5.7','./navigation.js?v=5.7','./users.js?v=5.7','./online.css?v=5.7','./manifest.webmanifest','./vendor/supabase-2.118.0.js','./casa-guedes-logo.png','./icon-192.png','./icon-512.png'];
 const allowed=new Set(FILES.map(f=>new URL(f,self.location.href).pathname));
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(APP+'-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

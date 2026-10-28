@@ -94,7 +94,7 @@ async function settled(page){try{await page.waitForFunction(()=>document.querySe
  assert.equal(new Set(saved[0].entries.filter(e=>e.qty>0).map(e=>e.name+'|'+e.measure)).size,25);
  await a.page.locator('#appNav [data-target="historico"]').click();await f.locator('[data-open]').first().click();
  assert.equal(await f.locator('.preview-total-line').count(),25);
-await a.page.locator('#appNav [data-target="producao"]').click();await f.locator('#prodResponsible').fill('Fabio teste');await f.locator('#prodSave').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,1);assert.equal(db.gh_operacao_central[0].modulo,'producao');
+await a.page.locator('#appNav [data-target="producao"]').click();await f.locator('#prodResponsible').fill('Fabio teste');await f.locator('#prodSave').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,1);assert.equal(db.gh_operacao_central[0].modulo,'producao');await f.locator('[data-prod-open]').first().click();assert.equal(await f.locator('#prodResponsible').inputValue(),'Fabio teste');
  // Full salgados record and a configuration are routed to their respective tables.
  await a.page.evaluate(()=>{GHCloud.set('guedes-salgados-v1',JSON.stringify([{id:'sal-teste',date:'2026-10-28',leader:'Fabio',items:[],notes:'Teste',fields:{},clean:[],layout:'visual'}]));GHCloud.set('gh43-pedido-modelos-v1',JSON.stringify([{id:'m1',name:'Modelo',unit:'G1',values:{}}]));});await settled(a.page);assert.equal(db.gh_operacao_central.length,2);assert.equal(db.gh_documentos.filter(x=>x.chave==='gh43-pedido-modelos-v1').length,1);
  // Legacy data import preserves originals and puts missing records into the database.
@@ -131,9 +131,9 @@ assert.deepEqual(u.errors,[]);assert.equal(await u.page.evaluate(()=>JSON.parse(
  const staff=await context(browser,'staff');const sf=staff.page.frameLocator('#appFrame');
  assert.equal(await staff.page.locator('#appNav [data-target="producao"]').isVisible(),true);assert.equal(await staff.page.locator('#appNav [data-target="guiado"]').isVisible(),false);assert.equal(await staff.page.locator('#appNav [data-target="gestao"]').isVisible(),false);
  assert.equal(await staff.page.evaluate(()=>JSON.parse(GHCloud.get('guedes-hub-production-v1')).length),0);
- await sf.locator('#prodResponsible').fill('Operador');await sf.locator('#prodSave').click();await settled(staff.page);
+ assert.equal(await sf.locator('#prodResponsible').inputValue(),'Operador');await sf.locator('#prodDate').fill('2026-10-29');await sf.locator('#prodDate').dispatchEvent('change');assert.equal(await sf.locator('#prodResponsible').inputValue(),'Operador');assert.match(await sf.locator('#prodPreview').innerText(),/Operador/);await sf.locator('#prodSave').click();await settled(staff.page);
  assert.equal(db.gh_operacao_central.filter(r=>r.criado_por===ids.staff).length,1);assert.match(db.gh_operacao_central.find(r=>r.criado_por===ids.staff).dados.number,/-P3$/);
- await staff.page.locator('#appNav [data-target="salgados"]').click();await sf.locator('#salLeader').fill('Operador');await sf.locator('#salSave').click();await settled(staff.page);
+ await staff.page.locator('#appNav [data-target="salgados"]').click();assert.equal(await sf.locator('#salLeader').inputValue(),'Operador');assert.match(await sf.locator('#salPreview').innerText(),/Operador/);await sf.locator('#salSave').click();await settled(staff.page);
  assert.equal(db.gh_operacao_central.filter(r=>r.criado_por===ids.staff).length,2);
  assert.equal(await staff.page.evaluate(async()=>{try{await GHCloud.manageUsers({action:'listar'});return false}catch{return true}}),true);
  profiles.staff.revisao_acesso++;profiles.staff.ativo=false;

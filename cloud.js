@@ -103,7 +103,7 @@ async function fetchRemote(){
  await Promise.all(names.map(async name=>data[name]=(name==='gh_operacao_central'&&!canModule('producao')&&!canModule('salgados')||name==='gh_pedidos'&&!canModule('pedidos'))?[]:await all(name)));
  return data;
 }
-function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.6.0';}
+function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.7.0';}
 async function load(reload=false){
  if(loading||flushing||!user||!navigator.onLine)return;
  loading=true;const actor=user.id;
@@ -205,7 +205,7 @@ async function initialize(account){
  }catch(e){$('loginError').textContent=e.message;$('login').hidden=false;$('workspace').hidden=true;user=null;profile=null;loaded=false;}
 }
 function clearAccount(){$('settingsDialog')?.close();window.GHCloud.ready=false;loaded=false;user=null;profile=null;units=[];acessos=[];accessChanged=false;queue=[];memory=new Map();view=new Map();remote=new Map();$('appFrame').removeAttribute('src');$('appFrame').hidden=true;$('workspace').hidden=true;$('login').hidden=false;$('orderRows').replaceChildren();$('auditRows').replaceChildren();clearTimeout(timer);}
-window.GHCloud={ready:false,admin:false,unitList:[],keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report,canModule,canRecord,permission,productionSuffix:()=>admin()?'':'-P'+profile.codigo_relatorio,manageUsers:async body=>{if(!admin()||accessChanged)throw Error('Cadastro exclusivo do administrador.');const {data,error}=await client.functions.invoke('gh-usuarios',{body});if(error){let message='Não foi possível concluir o cadastro. Atualize a lista antes de repetir.';try{message=(await error.context.json()).error||message}catch{}throw Error(message)}if(data?.error)throw Error(data.error);return data;}};
+window.GHCloud={ready:false,admin:false,unitList:[],keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report,canModule,canRecord,permission,currentName:()=>profile?.nome||'',productionSuffix:()=>admin()?'':'-P'+profile.codigo_relatorio,manageUsers:async body=>{if(!admin()||accessChanged)throw Error('Cadastro exclusivo do administrador.');const {data,error}=await client.functions.invoke('gh-usuarios',{body});if(error){let message='Não foi possível concluir o cadastro. Atualize a lista antes de repetir.';try{message=(await error.context.json()).error||message}catch{}throw Error(message)}if(data?.error)throw Error(data.error);return data;}};
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('enter').disabled=true;$('loginError').textContent='';try{const login=$('email').value.trim();let data,error;
 if(login.includes('@'))({data,error}=await client.auth.signInWithPassword({email:login,password:$('password').value}));
 else {const r=await client.functions.invoke('gh-login',{body:{login,senha:$('password').value}});if(r.error){let message='Não foi possível entrar.';try{message=(await r.error.context.json()).error||message}catch{}throw Error(message)}if(r.data?.error)throw Error(r.data.error);({data,error}=await client.auth.setSession({access_token:r.data.access_token,refresh_token:r.data.refresh_token}));}
@@ -214,7 +214,7 @@ $('logout').onclick=async()=>{if(queue.length&&!confirm('Há alterações penden
 $('refresh').onclick=async()=>{if(queue.length){notice('Sincronize ou resolva as pendências antes de atualizar.');return;}if(frameDirty&&!confirm('Atualizar a área de trabalho? Campos ainda não salvos serão descartados.'))return;await load(true);};
 $('retry').onclick=async()=>{queue.forEach(x=>x.error=null);persist();connectionError='';await flush();};
 $('backup').onclick=async()=>{
- const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.6',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
+ const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.7',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
  try{if(navigator.onLine){snapshot.auditoria={pedidos:await all('gh_pedidos_historico'),operacao:await all('gh_alteracoes')};}}catch(e){snapshot.aviso='Auditoria não incluída: '+e.message;}
  download('guedes-hub-backup-online-'+new Date().toISOString().slice(0,10)+'.json',snapshot);
 };
