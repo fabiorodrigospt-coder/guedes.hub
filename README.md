@@ -1,4 +1,4 @@
-# Guedes Hub 5.1
+# Guedes Hub 5.2
 
 Aplicação Casa Guedes/Stretto com autenticação Supabase e sincronização por conta. Mantém as telas operacionais do pacote 5.0.
 
@@ -52,3 +52,17 @@ O SDK Supabase 2.118.0 e sua licença estão em `vendor/`; o navegador não depe
 O login real com as senhas dos usuários e o teste em dois aparelhos físicos devem ser feitos por seus titulares. Nenhuma senha foi solicitada ou usada no desenvolvimento.
 
 O Security Advisor também sinalizou proteção contra senhas vazadas desativada; essa configuração de autenticação não foi alterada. Referência: [Password security](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection).
+
+## Correção do leitor — 5.2
+
+- Remove a restrição a Francesinha e Molho de Prego na leitura, consolidação e reabertura do histórico.
+- Todas as categorias começam selecionadas; Stretto tem a categoria Produtos.
+- Consulta o catálogo por unidade; nomes fora do catálogo ficam visíveis com aviso para conferência. Reconhece variantes explícitas de nomes, sem aproximação por similaridade.
+- Preserva campos vazios e zeros, separa CONTAGEM de PEDIDOS e mantém medidas distintas em totais separados. Corrige frações mistas como `1 3/4`.
+- Apresentações ambíguas de Gouda permanecem visíveis com aviso, sem conversão em caixas.
+- Validação local com o arquivo original de 27/10/2026: 25 produtos positivos, todos os totais conferidos, G1 sem pedidos. O arquivo operacional não foi incluído no repositório.
+- Navegador com API simulada: analisar a lista, visualizar 25 totais, salvar no documento sincronizado e reabrir o histórico; testes anteriores de produção, salgados, conflito, isolamento, fila offline e worker também passaram.
+
+Relatórios antigos não são reprocessados automaticamente: para recuperar itens descartados pelo leitor anterior, cole a lista original e use **Analisar listas** novamente. A versão não executa migrações nem altera registros existentes no banco.
+
+Regressões sintéticas: `npm test`. Para conferir um arquivo original local sem versioná-lo: `GH_ORIGINAL_LIST=/caminho/lista.txt npm test` (a conferência opcional espera a lista de 27/10/2026 usada nesta correção).

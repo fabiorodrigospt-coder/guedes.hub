@@ -80,7 +80,7 @@ async function fetchRemote(){
  await Promise.all(names.map(async name=>data[name]=(name==='gh_operacao_central'&&!admin())?[]:await all(name)));
  return data;
 }
-function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.1.0';}
+function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.2.0';}
 async function load(reload=false){
  if(loading||flushing||!user||!navigator.onLine)return;
  loading=true;const actor=user.id;
@@ -188,7 +188,7 @@ $('logout').onclick=async()=>{if(queue.length&&!confirm('Há alterações penden
 $('refresh').onclick=async()=>{if(queue.length){notice('Sincronize ou resolva as pendências antes de atualizar.');return;}if(frameDirty&&!confirm('Atualizar a área de trabalho? Campos ainda não salvos serão descartados.'))return;await load(true);};
 $('retry').onclick=async()=>{queue.forEach(x=>x.error=null);persist();connectionError='';await flush();};
 $('backup').onclick=async()=>{
- const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.1',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
+ const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.2',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
  try{if(navigator.onLine){snapshot.auditoria={pedidos:await all('gh_pedidos_historico'),operacao:await all('gh_alteracoes')};}}catch(e){snapshot.aviso='Auditoria não incluída: '+e.message;}
  download('guedes-hub-backup-online-'+new Date().toISOString().slice(0,10)+'.json',snapshot);
 };

@@ -44,7 +44,20 @@ async function settled(page){try{await page.waitForFunction(()=>document.querySe
 (async()=>{await new Promise(r=>server.listen(8765,'127.0.0.1',r));const provider=process.env.GH_TEST_CHROMIUM_MODULE?require(process.env.GH_TEST_CHROMIUM_MODULE):null;const browser=await chromium.launch(provider?{headless:true,executablePath:await provider.executablePath(),args:provider.args.filter(a=>a!=='--single-process')}:{headless:true});try{
  const a=await context(browser,'admin');assert.deepEqual(a.errors,[],'workspace JS errors');assert.equal(await a.page.frameLocator('#appFrame').locator('#producao').count(),1);
  // Actual production form, unchanged workflow.
- const f=a.page.frameLocator('#appFrame');await f.locator('[data-tab="producao"]').click();await f.locator('#prodResponsible').fill('Fabio teste');await f.locator('#prodSave').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,1);assert.equal(db.gh_operacao_central[0].modulo,'producao');
+ const f=a.page.frameLocator('#appFrame');
+ // Reader must carry all categories through preview, save, reopen and cloud persistence.
+ const {synthetic}=require('./reader.test.cjs');
+ await f.locator('[data-tab="importar"]').click();
+ await f.locator('#source').fill(process.env.GH_ORIGINAL_LIST?fs.readFileSync(process.env.GH_ORIGINAL_LIST,'utf8'):synthetic);
+ await f.locator('#parse').click();await f.locator('#mode').selectOption('total');
+ assert.equal(await f.locator('#categories input:checked').count(),8);
+ assert.equal(await f.locator('.preview-total-line').count(),25);
+ await f.locator('#save').click();await settled(a.page);
+ const saved=JSON.parse(db.gh_documentos.find(x=>x.chave==='guedes-hub-1.1-history').valor);
+ assert.equal(new Set(saved[0].entries.filter(e=>e.qty>0).map(e=>e.name+'|'+e.measure)).size,25);
+ await f.locator('[data-tab="historico"]').click();await f.locator('[data-open]').first().click();
+ assert.equal(await f.locator('.preview-total-line').count(),25);
+await f.locator('[data-tab="producao"]').click();await f.locator('#prodResponsible').fill('Fabio teste');await f.locator('#prodSave').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,1);assert.equal(db.gh_operacao_central[0].modulo,'producao');
  // Full salgados record and a configuration are routed to their respective tables.
  await a.page.evaluate(()=>{GHCloud.set('guedes-salgados-v1',JSON.stringify([{id:'sal-teste',date:'2026-10-28',leader:'Fabio',items:[],notes:'Teste',fields:{},clean:[],layout:'visual'}]));GHCloud.set('gh43-pedido-modelos-v1',JSON.stringify([{id:'m1',name:'Modelo',unit:'G1',values:{}}]));});await settled(a.page);assert.equal(db.gh_operacao_central.length,2);assert.equal(db.gh_documentos.filter(x=>x.chave==='gh43-pedido-modelos-v1').length,1);
  // Legacy data import preserves originals and puts missing records into the database.
@@ -53,7 +66,7 @@ async function settled(page){try{await page.waitForFunction(()=>document.querySe
  // A lost network response must not create duplicate records on retry.
  dropNextWrite=true;await a.page.evaluate(()=>{const rows=JSON.parse(GHCloud.get('guedes-salgados-v1'));rows.push({id:'sal-resposta-perdida',date:'2026-10-28',leader:'Fabio',items:[],notes:'',fields:{},clean:[],layout:'visual'});GHCloud.set('guedes-salgados-v1',JSON.stringify(rows));});
  await a.page.waitForFunction(()=>document.querySelector('#pendingList').textContent.includes('Failed')||document.querySelector('#pendingList').textContent.includes('fetch'));
- await a.page.locator('#retry').click();await settled(a.page);assert.equal(db.gh_operacao_central.filter(r=>r.dados.id==='sal-resposta-perdida').length,1);assert.equal(await a.page.locator('#notice').isVisible(),false);
+ await a.page.locator('#retry').click();await settled(a.page);assert.equal(db.gh_operacao_central.filter(r=>r.dados.id==='sal-resposta-perdida').length,1);await a.page.locator('#notice').waitFor({state:'hidden'});
  // Second device receives both modules and configuration.
  const b=await context(browser,'admin');const mirror=await b.page.evaluate(()=>({sal:JSON.parse(GHCloud.get('guedes-salgados-v1')),prod:JSON.parse(GHCloud.get('guedes-hub-production-v1')),models:JSON.parse(GHCloud.get('gh43-pedido-modelos-v1'))}));assert.equal(mirror.sal.length,2);assert.equal(mirror.prod.length,2);assert.equal(mirror.models[0].name,'Modelo');
  // Optimistic concurrency: first editor wins; stale editor stays pending.

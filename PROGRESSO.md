@@ -1,4 +1,4 @@
-# Guedes Hub 5.1 — estado de retomada
+# Guedes Hub 5.2 — estado de retomada
 
 ## Escopo autorizado e implementado
 - Sincronização dos pedidos, produção, salgados, históricos, catálogos, modelos, preferências, rascunhos e gestão operacional.
@@ -25,3 +25,11 @@ Código validado publicado na main no commit ff4a090d2bd4150c1de3b30282c732546c6
 Detalhes de funcionamento, limitações e verificação em README.md. Não recriar projeto nem pedir novamente os dados já configurados.
 
 Publicação: o código validado foi promovido para main por atualização atômica do Git. Nenhum dado operacional é incluído no repositório; somente código, estrutura e testes.
+
+## Atualização 5.2 — 28/10/2026
+- Causa confirmada: catálogo restrito no leitor, whitelist na consolidação/reabertura e somente Francesinha selecionada inicialmente.
+- Corrigidos leitura de todas as categorias, Stretto, aliases explícitos, preservação de produtos desconhecidos/queijo ambíguo e frações mistas.
+- Arquivo original enviado por Fabio validado localmente: 25 produtos com todos os totais corretos, sem misturar estoque. Nenhum dado desse arquivo é publicado no GitHub.
+- Testes do leitor, navegador com API simulada (incluindo salvar/reabrir a leitura) e worker passaram.
+- Versão 5.2 preparada para o mesmo endereço de teste. Nenhuma migração de banco ou escrita em dados operacionais foi feita nesta correção.
+- Próximo passo do usuário após implantação: Ctrl+F5, verificar 5.2 e analisar novamente a lista original. Os históricos antigos não são recalculados automaticamente.

@@ -1,6 +1,6 @@
 'use strict';
 const APP='gh-online-'+new URL(self.registration.scope).pathname.replace(/[^a-z0-9]/gi,'_');
-const CACHE=APP+'-5-1-v1';
+const CACHE=APP+'-5-2-v1';
 const FILES=['./','./index.html','./workspace.html','./frame-bridge.js','./cloud.js','./online.css','./manifest.webmanifest','./vendor/supabase-2.118.0.js','./casa-guedes-logo.png','./icon-192.png','./icon-512.png'];
 const allowed=new Set(FILES.map(f=>new URL(f,self.location.href).pathname));
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
