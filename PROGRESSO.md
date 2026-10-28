@@ -1,4 +1,4 @@
-# Guedes Hub 5.5 — estado de retomada
+# Guedes Hub 5.6 — estado de retomada
 
 ## Escopo autorizado e implementado
 - Sincronização dos pedidos, produção, salgados, históricos, catálogos, modelos, preferências, rascunhos e gestão operacional.
@@ -49,3 +49,11 @@ Publicação: o código validado foi promovido para main por atualização atôm
 - Novo formulário users.js inserido em Gestão Local apenas para administrador. Cadastro, edição de permissões/senha e desativação. Administradores protegidos.
 - SQL real com rollback passou, endpoint nega chamadas anônimas/inválidas; testes do servidor, navegador com API simulada, leitor original 25 produtos e worker passaram. Sem usuários temporários persistidos.
 - Ao atualizar para 5.5, Fabio pode criar a primeira conta real pela Gestão Local e validar o login. Não pedir novamente credenciais de infraestrutura nem senhas de usuários no chat.
+
+## Login simples e CRUD de usuários 5.6 — 28/10/2026
+- Fabio autorizou nome de acesso sem e-mail obrigatório e senhas de 6 caracteres nesta etapa, mantendo futura edição de e-mail e senha. Pediu adicionar, editar e excluir usuários.
+- Perfil ganhou login_nome único sem diferenciar maiúsculas e excluido. Excluir arquiva e desativa, com preservação de histórico; restaurar disponível no formulário. Administradores protegidos.
+- Migração gh56_login_simples_e_exclusao aplicada. RPCs de resolução, limitação e gestão somente service_role.
+- Edge gh-login ativa: autentica nome+senha no Auth, limites por nome, sem expor e-mail ou senha. Edge gh-usuarios atualizada para cadastros com e-mail técnico, nomes de acesso, senha mínima 6, edição de e-mail/senha e exclusão.
+- SQL real com rollback e suíte completa passaram; nome/senha no navegador testados com API simulada. Endpoint real retornou 401 para credenciais inválidas. Nenhuma conta operacional criada nem senha existente alterada automaticamente.
+- Publicação 5.6 no endereço de teste; administrador define os nomes de acesso cadastrando ou editando as contas. Seu login atual por e-mail continua válido.

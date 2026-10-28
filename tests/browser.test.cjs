@@ -7,7 +7,7 @@ const ids={admin:'11111111-1111-4111-8111-111111111111',unit:'22222222-2222-4222
 const email={admin:'admin@example.test',unit:'unit@example.test',staff:'staff@example.test'};
 const units=['G1','G2','G4','G5','G7','S1'].map((codigo,i)=>({codigo,nome:['Tradicional','Rooftop','Progresso','Oliveiras','Gaia','Stretto'][i]}));
 const db={gh_pedidos:[],gh_operacao_central:[],gh_documentos:[],gh_alteracoes:[],gh_pedidos_historico:[],gh_acessos:[{usuario_id:ids.staff,modulo:'producao',leitura:'proprios',edicao:'proprios',criar:true,unidades:[]},{usuario_id:ids.staff,modulo:'salgados',leitura:'proprios',edicao:'proprios',criar:true,unidades:[]}]};
-const profiles={admin:{usuario_id:ids.admin,nome:'Fabio',perfil:'administrador',unidade_codigo:null,ativo:true,revisao_acesso:1,acesso_configurado:false,codigo_relatorio:1},unit:{usuario_id:ids.unit,nome:'Teste G1',perfil:'unidade',unidade_codigo:'G1',ativo:true,revisao_acesso:1,acesso_configurado:false,codigo_relatorio:2},staff:{usuario_id:ids.staff,nome:'Operador',perfil:'colaborador',unidade_codigo:null,ativo:true,revisao_acesso:1,acesso_configurado:true,codigo_relatorio:3}};
+const profiles={admin:{usuario_id:ids.admin,nome:'Fabio',perfil:'administrador',unidade_codigo:null,ativo:true,revisao_acesso:1,acesso_configurado:false,codigo_relatorio:1},unit:{usuario_id:ids.unit,nome:'Teste G1',login_nome:'GuedesG1',perfil:'unidade',unidade_codigo:'G1',ativo:true,revisao_acesso:1,acesso_configurado:false,codigo_relatorio:2},staff:{usuario_id:ids.staff,nome:'Operador',perfil:'colaborador',unidade_codigo:null,ativo:true,revisao_acesso:1,acesso_configurado:true,codigo_relatorio:3}};
 const managed=Object.entries(profiles).map(([who,p])=>({...p,email:email[who],acessos:db.gh_acessos.filter(a=>a.usuario_id===p.usuario_id)}));let lastUserRequest;
 let writes=0;let dropNextWrite=false;
 function jwt(who){const b=s=>Buffer.from(JSON.stringify(s)).toString('base64url');return b({alg:'HS256',typ:'JWT'})+'.'+b({sub:ids[who],role:'authenticated',exp:Math.floor(Date.now()/1000)+3600})+'.test';}
@@ -26,11 +26,14 @@ async function route(route){const req=route.request(),u=new URL(req.url()),metho
  if(u.pathname==='/auth/v1/token'){const body=req.postDataJSON();const name=Object.keys(email).find(k=>email[k]===body.email);if(!name||body.password!=='test-password')return json({msg:'Invalid login credentials'},400);return json({access_token:jwt(name),refresh_token:'refresh-'+name,token_type:'bearer',expires_in:3600,expires_at:Math.floor(Date.now()/1000)+3600,user:users[name]});}
  if(u.pathname==='/auth/v1/user')return who?json(users[who]):json({msg:'No session'},401);
  if(u.pathname==='/auth/v1/logout')return route.fulfill({status:204});
+ if(u.pathname==='/functions/v1/gh-login'){
+  const b=req.postDataJSON();const who=Object.keys(profiles).find(k=>profiles[k].login_nome?.toLowerCase()===b.login.toLowerCase());if(!who||b.senha!=='123456')return json({error:'Usuário ou senha inválidos.'},401);return json({access_token:jwt(who),refresh_token:'refresh-'+who});
+ }
  if(u.pathname==='/functions/v1/gh-usuarios'){
   if(who!=='admin')return json({error:'Administrador necessário'},403);
   const b=req.postDataJSON();if(b.action==='listar')return json({usuarios:managed});lastUserRequest=b;
-  if(b.action==='criar'){managed.push({usuario_id:crypto.randomUUID(),nome:b.nome,email:b.email,unidade_codigo:b.unidade_codigo,perfil:'unidade',ativo:b.ativo,acesso_configurado:true,revisao_acesso:1,acessos:b.acessos});return json({message:'Usuário criado com os acessos definidos.'},201)}
-  const target=managed.find(x=>x.usuario_id===b.usuario_id);Object.assign(target,{nome:b.nome,ativo:b.ativo,acessos:b.acessos,revisao_acesso:target.revisao_acesso+1});return json({message:'Cadastro e permissões atualizados.'});
+  if(b.action==='criar'){managed.push({usuario_id:crypto.randomUUID(),nome:b.nome,login_nome:b.login_nome,email:b.email,unidade_codigo:b.unidade_codigo,perfil:'unidade',ativo:b.ativo,acesso_configurado:true,revisao_acesso:1,acessos:b.acessos});return json({message:'Usuário criado com os acessos definidos.'},201)}
+  const target=managed.find(x=>x.usuario_id===b.usuario_id);if(b.action==='excluir'){Object.assign(target,{excluido:true,ativo:false,revisao_acesso:target.revisao_acesso+1});return json({message:'Usuário excluído. Acesso bloqueado e históricos preservados.'})}Object.assign(target,{excluido:false,login_nome:b.login_nome,nome:b.nome,ativo:b.ativo,acessos:b.acessos,revisao_acesso:target.revisao_acesso+1});return json({message:'Cadastro e permissões atualizados.'});
  }
  const table=u.pathname.split('/').pop();if(!who)return json({message:'Unauthorized'},401);
  if(table==='gh_perfis')data=[profiles[who]];else if(table==='gh_unidades')data=who==='admin'?units:units.filter(u=>u.codigo===profiles[who].unidade_codigo);else data=visible(table,db[table]||[],who);
@@ -49,7 +52,7 @@ async function route(route){const req=route.request(),u=new URL(req.url()),metho
  }
  return json({message:'Unexpected route '+method+' '+u.pathname},400);
 }
-async function context(browser,who){const ctx=await browser.newContext({serviceWorkers:'block',acceptDownloads:true,viewport:{width:1280,height:900}});await ctx.route('https://opixtuuscvdwmpkcbhzp.supabase.co/**',route);const page=await ctx.newPage();page.setDefaultTimeout(12000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8765/');await page.locator('#email').fill(email[who]);await page.locator('#password').fill('test-password');await page.locator('#enter').click();await page.locator('#appFrame').waitFor({state:'visible'});await page.frameLocator('#appFrame').locator('#pgApp').waitFor({state:'attached'});await page.waitForTimeout(400);return {ctx,page,errors};}
+async function context(browser,who,useAlias=false){const ctx=await browser.newContext({serviceWorkers:'block',acceptDownloads:true,viewport:{width:1280,height:900}});await ctx.route('https://opixtuuscvdwmpkcbhzp.supabase.co/**',route);const page=await ctx.newPage();page.setDefaultTimeout(12000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8765/');await page.locator('#email').fill(useAlias?profiles[who].login_nome:email[who]);await page.locator('#password').fill(useAlias?'123456':'test-password');await page.locator('#enter').click();await page.locator('#appFrame').waitFor({state:'visible'});await page.frameLocator('#appFrame').locator('#pgApp').waitFor({state:'attached'});await page.waitForTimeout(400);return {ctx,page,errors};}
 async function settled(page){try{await page.waitForFunction(()=>document.querySelector('#syncStatus').textContent.startsWith('Banco atualizado'),null,{timeout:12000});}catch(e){console.error('SYNC DEBUG',await page.evaluate(()=>({status:document.querySelector('#syncStatus').textContent,pending:document.querySelector('#pendingList').textContent,notice:document.querySelector('#notice').textContent,queue:Object.fromEntries(Object.entries(localStorage).filter(([k])=>k.includes('pendentes')))})));throw e;}}
 (async()=>{await new Promise(r=>server.listen(8765,'127.0.0.1',r));const provider=process.env.GH_TEST_CHROMIUM_MODULE?require(process.env.GH_TEST_CHROMIUM_MODULE):null;const browser=await chromium.launch(provider?{headless:true,executablePath:await provider.executablePath(),args:provider.args.filter(a=>a!=='--single-process')}:{headless:true});try{
  const a=await context(browser,'admin');assert.deepEqual(a.errors,[],'workspace JS errors');assert.equal(await a.page.frameLocator('#appFrame').locator('#producao').count(),1);
@@ -70,13 +73,15 @@ async function settled(page){try{await page.waitForFunction(()=>document.querySe
  // Actual production form, unchanged workflow.
  const f=a.page.frameLocator('#appFrame');
  await a.page.locator('#appNav [data-target="gestao"]').click();
- await f.locator('#usrName').fill('Nova pessoa');await f.locator('#usrEmail').fill('new@example.test');await f.locator('#usrPassword').fill('test-only-password-12');await f.locator('#usrUnit').selectOption('G2');
+ await f.locator('#usrLogin').fill('GuedesG2');await f.locator('#usrName').fill('Nova pessoa');await f.locator('#usrEmail').fill('');await f.locator('#usrPassword').fill('123456');await f.locator('#usrUnit').selectOption('G2');
  await f.locator('[data-module="pedidos"] [data-enabled]').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Usuário criado'}).waitFor();
  assert.equal(lastUserRequest.acessos[0].leitura,'proprios');assert.equal(lastUserRequest.acessos[0].edicao,'proprios');assert.equal(lastUserRequest.unidade_codigo,'G2');assert.equal(await f.locator('#usrPassword').inputValue(),'');
- assert.equal(await a.page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}).includes('test-only-password-12')),false);
- await f.locator('#usrList .usrRecord').filter({hasText:'Nova pessoa'}).getByRole('button',{name:'Editar acessos'}).click();
+ assert.equal(await a.page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}).includes('123456')),false);
+ await f.locator('#usrList .usrRecord').filter({hasText:'Nova pessoa'}).getByRole('button',{name:'Editar usuário'}).click();
  await f.locator('[data-module="pedidos"] [data-read]').selectOption('selecionadas');await f.locator('[data-module="pedidos"] [data-edit]').selectOption('nenhum');await f.locator('[data-module="pedidos"] .usrHouses input[value="G4"]').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Cadastro e permissões atualizados'}).waitFor();
  assert.equal(lastUserRequest.action,'editar');assert.equal(lastUserRequest.acessos[0].edicao,'nenhum');assert.deepEqual(lastUserRequest.acessos[0].unidades,['G4']);assert.equal('senha' in lastUserRequest,false);
+ const newRow=f.locator('#usrList .usrRecord').filter({hasText:'Nova pessoa'});a.page.once('dialog',d=>d.accept());await newRow.getByRole('button',{name:'Excluir',exact:true}).click();await f.locator('#usrStatus').filter({hasText:'Usuário excluído'}).waitFor();assert.equal(await newRow.count(),0);
+ await f.locator('#usrShowDeleted').check();await newRow.getByRole('button',{name:'Restaurar / editar'}).click();await f.locator('#usrActive').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Cadastro e permissões atualizados'}).waitFor();assert.equal(await newRow.getByRole('button',{name:'Excluir',exact:true}).count(),1);
  // Reader must carry all categories through preview, save, reopen and cloud persistence.
  const {synthetic}=require('./reader.test.cjs');
  await a.page.locator('#appNav [data-target="importar"]').click();
@@ -105,7 +110,7 @@ await a.page.locator('#appNav [data-target="producao"]').click();await f.locator
  await a.page.evaluate(()=>GHCloud.set('gh43-pedido-modelos-v1','[{"id":"m1","name":"A"}]'));await settled(a.page);
  await b.page.evaluate(()=>GHCloud.set('gh43-pedido-modelos-v1','[{"id":"m1","name":"B"}]'));await b.page.waitForFunction(()=>document.querySelector('#pendingList').textContent.includes('Conflito'));assert.match(db.gh_documentos.find(x=>x.chave==='gh43-pedido-modelos-v1').valor,/"A"/);
  // Unit role receives no production/salgados data; cannot stage an admin module.
- const u=await context(browser,'unit');
+ const u=await context(browser,'unit',true);
  assert.equal(await u.page.locator('#identity').textContent(),'Teste G1 · G1');
  assert.equal(await u.page.locator('#restore').isVisible(),false);
  await u.page.getByRole('button',{name:'Ajustes',exact:true}).click();

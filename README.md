@@ -1,4 +1,4 @@
-# Guedes Hub 5.5
+# Guedes Hub 5.6
 
 Aplicação Casa Guedes/Stretto com autenticação Supabase e sincronização por conta. Mantém as telas operacionais do pacote 5.0.
 
@@ -99,3 +99,16 @@ As contas anteriores de unidade sem configuração explícita mantêm o módulo 
 - Endpoint implantado: chamadas sem token e com token inválido retornaram 401. O primeiro cadastro real e o login com a senha definida devem ser feitos pelo titular no formulário; nenhum usuário operacional foi criado durante o desenvolvimento.
 
 Se houver uma falha de rede durante um cadastro, atualizar a lista antes de tentar novamente. Um e-mail já existente não é sobrescrito pelo fluxo de criação. Se a conta existir no Auth sem perfil (provisionamento interrompido), ela não recebe acesso ao aplicativo e precisa de revisão administrativa.
+
+## Nome de acesso e gerenciamento completo — 5.6
+
+- Login aceita nome de acesso ou o e-mail existente. Cadastro por nome de acesso é o modo principal; nome para exibição e e-mail são opcionais. Nomes de acesso têm 3 a 32 caracteres, começam com uma letra e aceitam letras sem acentos, números, ponto, hífen e sublinhado. A comparação ignora maiúsculas/minúsculas, sem duplicatas.
+- A pedido de Fabio, o mínimo da senha no aplicativo passou de 12 para 6 caracteres. Não há senha padrão preenchida ou atribuída automaticamente. A política de autenticação do projeto também é aplicada pelo Supabase Auth. É possível definir uma senha mais longa ou adicionar e-mail real depois em Editar usuário.
+- Para contas sem e-mail informado, o serviço cria um endereço técnico único no domínio reservado `login.guedeshub.invalid`. Esse endereço não recebe mensagens nem aparece na lista; não é a senha nem uma forma pública de descobrir a conta.
+- `gh-login` resolve o nome apenas no servidor e delega a verificação da senha ao Auth. A resposta entrega somente a sessão ao cliente. Respostas de credenciais incorretas não revelam se o usuário existe; há limite de 10 tentativas por nome em 15 minutos, reiniciado após login válido. Tabelas de limite e resolução de e-mail são inacessíveis por clientes.
+- Novo usuário, Editar usuário e Excluir ficam na Gestão Local. Excluir arquiva a conta, bloqueia o acesso e mantém a autoria e os históricos; não remove o usuário do Auth nem registros operacionais. Mostrar usuários excluídos permite restaurar pelo formulário. Nomes de acesso excluídos ficam reservados para restauração. Contas de administrador ficam protegidas.
+- E-mail deixado em branco durante edição mantém o endereço atual. Nova senha em branco mantém a atual. Atualização de senha/e-mail pelo Auth e permissões pelo Postgres não é uma transação única; qualquer falha parcial é informada e a lista deve ser atualizada antes de repetir.
+
+`db/login_simples.sql` registra a migração complementar aplicada após `db/usuarios_acessos.sql`. Implantar também `supabase/functions/gh-login/` e atualizar `gh-usuarios`, incluindo `import_map_path=deno.json` quando substituir a função existente.
+
+Validação: `tests/login.sql` no banco real, com rollback, confirmou unicidade, resolução restrita, limite de tentativas, exclusão preservando pedidos, bloqueio da sessão e restauração. Testes do endpoint, cadastro sem e-mail, senha de 6 caracteres, entrada por nome, edição/exclusão/restauração e regressões operacionais passaram com API simulada. Endpoint real de login recusou credenciais inválidas com 401. Nenhuma senha ou conta existente foi alterada automaticamente.
