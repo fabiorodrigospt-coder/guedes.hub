@@ -1,0 +1,11 @@
+{
+  "name": "guedes-hub",
+  "version": "5.1.0",
+  "private": true,
+  "scripts": {
+    "test": "node tests/browser.test.cjs && node tests/worker.test.cjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

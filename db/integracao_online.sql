@@ -1,7 +1,7 @@
 -- Complementa as tabelas gh_pedidos e gh_operacao_central já existentes.
 create table public.gh_documentos (
   escopo text not null check (escopo in ('central','G1','G2','G4','G5','G7','S1')),
-  chave text not null check (chave ~ '^(gh|guedes)[_-][a-zA-Z0-9_.-]+$'),
+  chave text not null check (chave ~ '^(gh[0-9]*|guedes)[_-][a-zA-Z0-9_.-]+$'),
   valor text not null,
   versao bigint not null default 1 check (versao > 0),
   criado_por uuid not null default auth.uid() references auth.users(id),
@@ -99,3 +99,5 @@ create trigger gh_auditar_central after insert or update on public.gh_operacao_c
 for each row execute function gh_privado.gh_auditar_operacao();
 create trigger gh_auditar_documento after insert or update on public.gh_documentos
 for each row execute function gh_privado.gh_auditar_operacao();
+
+create unique index gh_producao_numero_unico on public.gh_operacao_central ((dados->>'number')) where modulo='producao' and dados->>'number' is not null;

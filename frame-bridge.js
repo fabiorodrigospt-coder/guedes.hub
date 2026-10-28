@@ -16,6 +16,7 @@
   Object.defineProperty(window, 'localStorage', { value: storage, configurable: false });
   window.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('input', () => bridge.dirty(), true);
+    document.documentElement.style.visibility='visible';
     const guiado = document.querySelector('[data-tab="guiado"]');
     if (!bridge.admin) {
       for (const b of document.querySelectorAll('.tabs [data-tab]')) if (b.dataset.tab !== 'guiado') b.hidden = true;

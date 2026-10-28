@@ -14,7 +14,11 @@ const admin=()=>profile?.perfil==='administrador';
 const clone = x => JSON.parse(JSON.stringify(x));
 const stable = x => x===null || typeof x!=='object' ? JSON.stringify(x) : Array.isArray(x) ? '['+x.map(stable).join(',')+']' : '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}';
 const same=(a,b)=>stable(a)===stable(b);
-const qkey=()=> 'gh-online-pendentes-v1:'+user.id;
+let tabId=sessionStorage.getItem('gh-online-tab-v1');
+if(!tabId){tabId=crypto.randomUUID();sessionStorage.setItem('gh-online-tab-v1',tabId);}
+const qprefix=()=> 'gh-online-pendentes-v1:'+user.id;
+const qkey=()=>qprefix()+':'+tabId;
+function otherQueues(){if(!user)return [];const a=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key!==qkey()&&(key===qprefix()||key.startsWith(qprefix()+':'))){try{const data=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(data)&&data.length)a.push({key,data,text:localStorage.getItem(key)});}catch{}}}return a;}
 const scope=()=>admin()?'central':profile.unidade_codigo;
 const docid=(s,k)=>s+'/'+k;
 const recordid=(key,id)=>key+'/'+id;
@@ -27,6 +31,7 @@ function status(){
  const failed=queue.filter(x=>x.error).length;
  $('syncStatus').textContent=connectionError || (queue.length ? queue.length+' alteração(ões) pendente(s)'+(failed?' · '+failed+' exigem atenção':' · aguardando confirmação do banco') : lastSuccess?'Banco atualizado às '+lastSuccess:'Dados carregados do banco');
  $('pendingPanel').hidden=queue.length===0;
+ $('recover').hidden=otherQueues().length===0;
  $('pendingList').replaceChildren();
  for(const op of queue){const el=document.createElement('div');el.className='pendingItem';const title=document.createElement('strong');title.textContent=op.key+(op.record?.date?' · '+op.record.date:'');el.append(title);const p=document.createElement('p');p.textContent=op.error||'Aguardando sincronização';el.append(p);if(op.error){const b=document.createElement('button');b.className='secondary';b.textContent='Exportar e descartar esta alteração';b.onclick=()=>discard(op.id);el.append(b);}$('pendingList').append(el);}
 }
@@ -39,7 +44,7 @@ function validateRecord(key,r){
 }
 function storageSet(key,value){
  if(!user||!loaded)throw Error('Faça login antes de salvar.');
- if(!/^(gh|guedes)[_-][a-zA-Z0-9_.-]+$/.test(key))throw Error('Chave de dados não autorizada.');
+ if(!/^(gh[0-9]*|guedes)[_-][a-zA-Z0-9_.-]+$/.test(key))throw Error('Chave de dados não autorizada.');
  if(memory.get(key)===value)return;
  const previous=queue;
  const next=clone(queue);
@@ -73,33 +78,38 @@ function buildView(data){
 async function fetchRemote(){
  const names=['gh_pedidos','gh_operacao_central','gh_documentos'];const data={};
  await Promise.all(names.map(async name=>data[name]=(name==='gh_operacao_central'&&!admin())?[]:await all(name)));
- remote=new Map(Object.entries(data));return data;
+ return data;
 }
 function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.1.0';}
 async function load(reload=false){
  if(loading||flushing||!user||!navigator.onLine)return;
- loading=true;
- try{const data=await fetchRemote();renderOrders();if(reload){buildView(data);mount();notice('');}else if(!loaded){buildView(data);loaded=true;window.GHCloud.ready=true;mount();}else{
+ loading=true;const actor=user.id;
+ try{const data=await fetchRemote();if(user?.id!==actor)return;remote=new Map(Object.entries(data));renderOrders();if(reload){buildView(data);mount();notice('');}else if(!loaded){buildView(data);loaded=true;window.GHCloud.ready=true;mount();}else{
   const changes=Object.entries(data).some(([table,rows])=>rows.some(r=>{let id;if(table==='gh_documentos')id=docid(r.escopo,r.chave);else{const key=table==='gh_pedidos'?HISTORY:r.modulo==='producao'?PROD:SAL;id=recordid(key,r.dados.id||r.id);}return view.get(id)?.versao!==r.versao;}));
   if(changes&&!queue.length)notice('Há dados novos no banco. Use Atualizar dados para carregar na área de trabalho sem perder o formulário aberto.');
  }
  connectionError='';status();
- }catch(e){report('Não foi possível atualizar: '+(e.message||String(e)));}finally{loading=false;}
+ }catch(e){if(user?.id===actor)report('Não foi possível atualizar: '+(e.message||String(e)));}finally{loading=false;}
 }
 function queryIdentity(q,op){return op.escopo?q.eq('escopo',op.escopo).eq('chave',op.key):q.eq('id',op.dbid);}
 function matches(row,op){if(op.escopo)return row.valor===op.value;return same(row.dados,op.record)&&(op.key!==HISTORY||row.status===op.targetStatus);}
 async function getCurrent(op){let q=client.from(op.escopo?'gh_documentos':records.get(op.key)).select('*');const r=await queryIdentity(q,op).maybeSingle();if(r.error)throw r.error;return r.data;}
-async function write(op){
+async function write(op,actor){
  const table=op.escopo?'gh_documentos':records.get(op.key);
  // Reconcile lost responses and enforce the version seen when editing began.
  const current=await getCurrent(op);
+ if(user?.id!==actor)throw Error('A sessão mudou durante a sincronização.');
  if(current&&matches(current,op))return current;
+ if(current&&op.key===HISTORY&&same(current.dados,op.record)&&current.status==='rascunho'&&op.targetStatus==='enviado'&&op.version===null){
+  const r=await client.from(table).update({status:'enviado'}).eq('id',current.id).eq('versao',current.versao).select('*');
+  if(r.error)throw r.error;if(r.data.length!==1)throw Object.assign(Error('Conflito no envio do pedido.'),{conflict:true});return r.data[0];
+ }
  if(op.version!==null&&(!current||current.versao!==op.version))throw Object.assign(Error('Conflito: o registro mudou em outro aparelho. Exporte sua alteração e atualize os dados.'),{conflict:true});
  if(op.version===null&&current)throw Object.assign(Error('Conflito: já existe um registro com esta identificação.'),{conflict:true});
  let q;
  if(op.version===null){let row;
   if(op.escopo)row={escopo:op.escopo,chave:op.key,valor:op.value};
-  else if(op.key===HISTORY)row={id:op.dbid,unidade_codigo:op.record.unit,criado_por:user.id,dados:op.record};
+  else if(op.key===HISTORY)row={id:op.dbid,unidade_codigo:op.record.unit,criado_por:actor,dados:op.record};
   else row={id:op.dbid,modulo:op.key===PROD?'producao':'salgados',data_referencia:op.record.date,dados:op.record};
   q=client.from(table).insert(row);
  }else{const patch=op.escopo?{valor:op.value}:op.key===HISTORY?{dados:op.record,status:op.targetStatus}:{dados:op.record,data_referencia:op.record.date};q=queryIdentity(client.from(table).update(patch),op).eq('versao',op.version);}
@@ -118,12 +128,12 @@ async function flush(){
   for(const op0 of [...queue]){
    if(!user||actor!==user.id)break;
    const op=queue.find(x=>x.id===op0.id);if(!op||op.error)continue;const snapshot=clone(op);
-   try{const row=await write(snapshot);if(!user||actor!==user.id)break;
+   try{const row=await write(snapshot,actor);if(!user||actor!==user.id)break;
     view.set(snapshot.id,row);const live=queue.find(x=>x.id===snapshot.id);if(live?.rev===snapshot.rev)queue=queue.filter(x=>x.id!==snapshot.id);else if(live){live.version=row.versao;live.created=false;}
     persist();lastSuccess=new Date().toLocaleTimeString('pt-BR');connectionError='';
-   }catch(e){const live=queue.find(x=>x.id===snapshot.id);if(live){live.error=(e.message||String(e));persist();}report('Alteração preservada, mas ainda não confirmada pelo banco. Confira as pendências.');}
+   }catch(e){if(user?.id!==actor)break;const live=queue.find(x=>x.id===snapshot.id);if(live){live.error=(e.message||String(e));persist();}report('Alteração preservada, mas ainda não confirmada pelo banco. Confira as pendências.');}
   }
- }finally{flushing=false;status();if(user&&actor===user.id)await load();}
+ }finally{flushing=false;status();if(user&&actor===user.id){await load();if(queue.some(x=>!x.error))setTimeout(flush,50);}}
 }
 function renderOrders(){
  $('orderRows').replaceChildren();const rows=remote.get('gh_pedidos')||[];
@@ -153,7 +163,7 @@ async function importLocal(){
  if(!admin())return;
  if(!confirm('Importar dados antigos deste navegador? Registros já existentes não serão sobrescritos. Os dados antigos permanecem disponíveis para recuperação.'))return;
  let count=0,skipped=0;
- for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!/^(gh|guedes)[_-]/.test(key)||key.startsWith('gh-online-'))continue;const value=localStorage.getItem(key);try{
+ for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(!/^(gh[0-9]*|guedes)[_-]/.test(key)||key.startsWith('gh-online-'))continue;const value=localStorage.getItem(key);try{
   if(records.has(key)){const old=parseArray(value),current=parseArray(memory.get(key));const add=old.filter(r=>!current.some(x=>x.id===r.id));if(add.length){storageSet(key,JSON.stringify([...current,...add]));count+=add.length;}}
   else if(!memory.has(key)){storageSet(key,value);count++;}else if(memory.get(key)!==value)skipped++;
  }catch(e){skipped++;}}
@@ -177,7 +187,50 @@ $('loginForm').onsubmit=async e=>{e.preventDefault();$('enter').disabled=true;$(
 $('logout').onclick=async()=>{if(queue.length&&!confirm('Há alterações pendentes preservadas neste navegador para esta conta. Sair mesmo assim?'))return;if(flushing){notice('Aguarde a operação em andamento antes de sair.');return;}clearAccount();await client.auth.signOut({scope:'local'});};
 $('refresh').onclick=async()=>{if(queue.length){notice('Sincronize ou resolva as pendências antes de atualizar.');return;}if(frameDirty&&!confirm('Atualizar a área de trabalho? Campos ainda não salvos serão descartados.'))return;await load(true);};
 $('retry').onclick=async()=>{queue.forEach(x=>x.error=null);persist();connectionError='';await flush();};
-$('backup').onclick=()=>download('guedes-hub-backup-online-'+new Date().toISOString().slice(0,10)+'.json',{app:'Guedes Hub',version:'5.1',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:queue,servidor:Object.fromEntries(remote)});
+$('backup').onclick=async()=>{
+ const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.1',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
+ try{if(navigator.onLine){snapshot.auditoria={pedidos:await all('gh_pedidos_historico'),operacao:await all('gh_alteracoes')};}}catch(e){snapshot.aviso='Auditoria não incluída: '+e.message;}
+ download('guedes-hub-backup-online-'+new Date().toISOString().slice(0,10)+'.json',snapshot);
+};
+$('recover').onclick=async()=>{
+ if(!confirm('Feche outras abas do Guedes Hub antes de recuperar. Deseja incorporar as pendências preservadas de outras abas?'))return;
+ const others=otherQueues();let skipped=0;
+ for(const other of others){const remain=[];for(const op of other.data){if(queue.some(x=>x.id===op.id)){remain.push(op);skipped++;}else queue.push({...op,rev:++revision,error:null});}
+  persist();if(localStorage.getItem(other.key)===other.text)localStorage.setItem(other.key,JSON.stringify(remain));
+ }
+ status();await flush();notice(skipped?skipped+' pendência(s) com identificação já presente foram preservadas na outra fila. Exporte antes de resolver.':'Pendências recuperadas. Confira a confirmação do banco.');
+};
+$('restore').onclick=()=>$('backupFile').click();
+$('backupFile').onchange=async()=>{
+ const file=$('backupFile').files?.[0];$('backupFile').value='';if(!file)return;
+ try{
+  if(file.size>30*1024*1024)throw Error('Backup acima de 30 MB.');
+  const wrapper=JSON.parse(await file.text()),payload=wrapper.payload||wrapper;
+  if(payload.app!=='Guedes Hub'||!payload.data||typeof payload.data!=='object'||Array.isArray(payload.data))throw Error('Formato de backup não reconhecido. Use o backup completo do aplicativo.');
+  if(payload.usuario&&payload.usuario!==user.id&&!admin())throw Error('Este backup pertence a outra conta.');
+  if(wrapper.payload){
+   if(!wrapper.check)throw Error('Backup sem verificação de integridade.');
+   const bytes=new TextEncoder().encode(JSON.stringify(payload));let check;
+   if(wrapper.check.algorithm==='SHA-256'){const hash=await crypto.subtle.digest('SHA-256',bytes);check=[...new Uint8Array(hash)].map(x=>x.toString(16).padStart(2,'0')).join('');}
+   else if(wrapper.check.algorithm==='CRC32'){let c=0xffffffff;for(const x of bytes){c^=x;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0);}check=((c^0xffffffff)>>>0).toString(16).padStart(8,'0');}
+   else throw Error('Verificação de integridade não suportada.');
+   if(check!==wrapper.check.value)throw Error('Falha de integridade do backup.');
+  }
+  if(!confirm('Importar este backup? Registros existentes com dados diferentes serão preservados. Configurações já existentes não serão sobrescritas.'))return;
+  let imported=0;const skipped=[];
+  for(const [key,value] of Object.entries(payload.data)){
+   try{
+    if(typeof value!=='string')throw Error('Valor inválido');
+    if(records.has(key)){
+     const old=parseArray(value),current=parseArray(memory.get(key));
+     for(const r of old){const existing=current.find(x=>x.id===r.id);if(existing&&!same(existing,r))skipped.push(key+': registro '+r.id+' já existe com conteúdo diferente');}
+     const add=old.filter(r=>!current.some(x=>x.id===r.id));if(add.length){storageSet(key,JSON.stringify([...current,...add]));imported+=add.length;}
+    }else if(!memory.has(key)){storageSet(key,value);imported++;}else if(memory.get(key)!==value)skipped.push(key+': configuração existente preservada');
+   }catch(e){skipped.push(key+': '+e.message);}
+  }
+  await flush();notice(imported+' item(ns) encaminhado(s) à sincronização. '+(skipped.length?'Itens não importados: '+skipped.join('; '):'Use Atualizar dados para carregar na área de trabalho.'));
+ }catch(e){report('Não foi possível importar: '+e.message);}
+};
 $('importLocal').onclick=importLocal;$('loadAudit').onclick=()=>audit();
 window.addEventListener('online',()=>{connectionError='';queue.forEach(x=>{if(x.error&&!/Conflito|autorizad/i.test(x.error))x.error=null;});persistIfUser();flush();});
 function persistIfUser(){if(user)persist();}
