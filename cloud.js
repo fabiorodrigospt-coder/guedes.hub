@@ -10,7 +10,30 @@ const SAL = 'guedes-salgados-v1';
 const records = new Map([[HISTORY,'gh_pedidos'],[PROD,'gh_operacao_central'],[SAL,'gh_operacao_central']]);
 const unitKeys = new Set(['gh27-pedido-guiado-catalogo-v2','gh43-pedido-modelos-v1','gh38-politicas-estoque-v1','guedes-hub-2.2-rascunhos','guedes_hub_install_invite_dismissed_v1']);
 let user=null, profile=null, units=[], queue=[], memory=new Map(), view=new Map(), remote=new Map(), timer, flushing=false, loaded=false, frameDirty=false, revision=0, loading=false, lastSuccess='', connectionError='';
-const admin=()=>profile?.perfil==='administrador';
+let acessos=[],accessChanged=false;
+const admin=()=>profile?.perfil==='administrador'&&profile?.ativo!==false;
+const moduleKey=key=>key===HISTORY?'pedidos':key===PROD?'producao':key===SAL?'salgados':null;
+function permission(modulo){if(admin())return {modulo,leitura:'todos',edicao:'todos',criar:true,unidades:units.map(u=>u.codigo)};return acessos.find(a=>a.modulo===modulo)||(!profile?.acesso_configurado&&profile?.perfil==='unidade'&&modulo==='pedidos'?{modulo,leitura:'proprios',edicao:'proprios',criar:true,unidades:[]}:null);}
+const canModule=m=>!accessChanged&&profile?.ativo!==false&&!!permission(m);
+function canRecord(key,id,action,record){
+ if(accessChanged||profile?.ativo===false)return false;if(admin())return true;
+ const m=moduleKey(key),p=permission(m);if(!p)return false;
+ const row=view.get(recordid(key,id));const owner=row?.criado_por||user.id,casa=record?.unit||row?.unidade_codigo;
+ const ownHouse=m!=='pedidos'||casa===profile.unidade_codigo||p.unidades.includes(casa);
+ if(action==='criar')return p.criar&&(!row)&&ownHouse;
+ if(m==='pedidos'&&action==='editar'&&row?.status==='enviado')return false;
+ return (action==='ler'?[p.leitura,p.edicao]:[p.edicao]).some(rule=>rule==='todos'||rule==='proprios'&&owner===user.id&&ownHouse||m==='pedidos'&&rule==='unidade'&&casa===profile.unidade_codigo||m==='pedidos'&&rule==='selecionadas'&&ownHouse);
+}
+async function loadAccess(initial=false){
+ const result=await client.from('gh_perfis').select('*').eq('usuario_id',user.id).single();if(result.error)throw result.error;
+ const p=result.data;
+ if(p.ativo===false||(!initial&&p.revisao_acesso!==profile.revisao_acesso)){
+  accessChanged=true;window.GHCloud.ready=false;memory=new Map();view=new Map();remote=new Map();$('appFrame').hidden=true;$('appNav').replaceChildren();$('orderRows').replaceChildren();$('auditRows').replaceChildren();
+  throw Error(p.ativo===false?'Conta desativada. Entre em contato com o administrador.':'Seus acessos foram alterados. Exporte pendências, saia e entre novamente para carregar as novas permissões.');
+ }
+ const r=await client.from('gh_acessos').select('*').eq('usuario_id',user.id);if(r.error)throw r.error;
+ profile=p;acessos=r.data;
+}
 const clone = x => JSON.parse(JSON.stringify(x));
 const stable = x => x===null || typeof x!=='object' ? JSON.stringify(x) : Array.isArray(x) ? '['+x.map(stable).join(',')+']' : '{'+Object.keys(x).sort().map(k=>JSON.stringify(k)+':'+stable(x[k])).join(',')+'}';
 const same=(a,b)=>stable(a)===stable(b);
@@ -19,7 +42,7 @@ if(!tabId){tabId=crypto.randomUUID();sessionStorage.setItem('gh-online-tab-v1',t
 const qprefix=()=> 'gh-online-pendentes-v1:'+user.id;
 const qkey=()=>qprefix()+':'+tabId;
 function otherQueues(){if(!user)return [];const a=[];for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i);if(key!==qkey()&&(key===qprefix()||key.startsWith(qprefix()+':'))){try{const data=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(data)&&data.length)a.push({key,data,text:localStorage.getItem(key)});}catch{}}}return a;}
-const scope=()=>admin()?'central':profile.unidade_codigo;
+const scope=()=>admin()?'central':'usuario:'+user.id;
 const docid=(s,k)=>s+'/'+k;
 const recordid=(key,id)=>key+'/'+id;
 const isUUID=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
@@ -40,10 +63,10 @@ function validateRecord(key,r){
  if(!r||typeof r!=='object'||Array.isArray(r)||!r.id||typeof r.id!=='string')throw Error('Registro sem identificação válida.');
  if(!/^\d{4}-\d{2}-\d{2}$/.test(r.date||''))throw Error('Registro sem data válida.');
  if(key===HISTORY){if(!units.some(u=>u.codigo===r.unit))throw Error('Unidade não autorizada.');}
- else if(!admin())throw Error('Produção e salgados são exclusivos do administrador.');
+ if(!canModule(moduleKey(key)))throw Error('Você não tem acesso a este módulo.');
 }
 function storageSet(key,value){
- if(!user||!loaded)throw Error('Faça login antes de salvar.');
+ if(!user||!loaded||accessChanged)throw Error('Entre novamente para confirmar seus acessos antes de salvar.');
  if(!/^(gh[0-9]*|guedes)[_-][a-zA-Z0-9_.-]+$/.test(key))throw Error('Chave de dados não autorizada.');
  if(memory.get(key)===value)return;
  const previous=queue;
@@ -54,12 +77,12 @@ function storageSet(key,value){
   for(const r of list){validateRecord(key,r);if(ids.has(r.id))throw Error('Identificação repetida no histórico.');ids.add(r.id);}
   if(before.some(r=>!ids.has(r.id)))throw Error('A remoção de registros sincronizados está bloqueada. Faça uma cópia antes de importar um backup.');
   for(const record of list){const old=before.find(x=>x.id===record.id);if(same(old,record))continue;
-   const id=recordid(key,record.id);const base=view.get(id);
+   const id=recordid(key,record.id);const base=view.get(id);if(!canRecord(key,record.id,base?'editar':'criar',record))throw Error('Seu acesso não permite salvar este registro.');
    if(key===HISTORY && base?.status==='enviado' && !admin())throw Error('Pedido enviado: somente o administrador pode corrigir. Duplique para criar um novo rascunho.');
    add({id,key,record:clone(record),dbid:base?.id||(isUUID(record.id)?record.id:crypto.randomUUID()),version:base?.versao??null,created:!base,targetStatus:base?.status||'rascunho'});
   }
  } else {
-  if(!admin()&&!unitKeys.has(key))throw Error('Este módulo é exclusivo do administrador.');
+  if(!admin()&&!unitKeys.has(key)&&!canModule('producao')&&!canModule('salgados'))throw Error('Este módulo é exclusivo do administrador.');
   const id=docid(scope(),key),base=view.get(id);
   add({id,key,escopo:scope(),value:value===null?'null':value,version:base?.versao??null,created:!base});
  }
@@ -71,16 +94,16 @@ async function all(table){let rows=[];for(let from=0;;from+=1000){const {data,er
 function buildView(data){
  const map=new Map(),mem=new Map();
  for(const [key,table] of records){const rows=data[table].filter(r=>table==='gh_pedidos'||r.modulo===(key===PROD?'producao':'salgados'));const list=rows.map(r=>{const item={...r.dados,id:r.dados.id||r.id};map.set(recordid(key,item.id),r);return item;}).sort((a,b)=>(b.date||'').localeCompare(a.date||''));mem.set(key,JSON.stringify(list));}
- for(const d of data.gh_documentos){map.set(docid(d.escopo,d.chave),d);if(d.escopo===scope()||(d.escopo==='central'&&d.chave==='guedes-hub-catalogo-local-v1'))mem.set(d.chave,d.valor);}
+ for(const d of data.gh_documentos){map.set(docid(d.escopo,d.chave),d);if(d.escopo===scope()||(!admin()&&d.escopo===profile.unidade_codigo&&d.criado_por===user.id)||(d.escopo==='central'&&d.chave==='guedes-hub-catalogo-local-v1'))mem.set(d.chave,d.valor);}
  for(const op of queue){if(op.record){const a=parseArray(mem.get(op.key));const i=a.findIndex(x=>x.id===op.record.id);if(i<0)a.unshift(op.record);else a[i]=op.record;mem.set(op.key,JSON.stringify(a));}else mem.set(op.key,op.value);}
  view=map;memory=mem;
 }
 async function fetchRemote(){
- const names=['gh_pedidos','gh_operacao_central','gh_documentos'];const data={};
- await Promise.all(names.map(async name=>data[name]=(name==='gh_operacao_central'&&!admin())?[]:await all(name)));
+ await loadAccess();const names=['gh_pedidos','gh_operacao_central','gh_documentos'];const data={};
+ await Promise.all(names.map(async name=>data[name]=(name==='gh_operacao_central'&&!canModule('producao')&&!canModule('salgados')||name==='gh_pedidos'&&!canModule('pedidos'))?[]:await all(name)));
  return data;
 }
-function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.3.0';}
+function mount(){frameDirty=false;const frame=$('appFrame');frame.hidden=false;frame.src='workspace.html?v=5.5.0';}
 async function load(reload=false){
  if(loading||flushing||!user||!navigator.onLine)return;
  loading=true;const actor=user.id;
@@ -122,7 +145,7 @@ async function write(op,actor){
  return row;
 }
 async function flush(){
- if(flushing||loading||!loaded||!user||!navigator.onLine)return;
+ if(flushing||loading||!loaded||!user||accessChanged||!navigator.onLine)return;
  flushing=true;const actor=user.id;
  try{
   for(const op0 of [...queue]){
@@ -141,14 +164,14 @@ function renderOrders(){
  if(!rows.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=4;td.textContent='Nenhum pedido no banco. Crie e salve um Pedido Guiado na área de trabalho.';tr.append(td);$('orderRows').append(tr);return;}
  for(const row of rows){const tr=document.createElement('tr');const vals=[row.unidade_codigo+' · '+(row.dados.date||new Date(row.criado_em).toLocaleDateString('pt-BR')),row.status==='enviado'?'Enviado no sistema':'Rascunho',String(row.versao)];for(const value of vals){const td=document.createElement('td');td.textContent=value;tr.append(td);}const td=document.createElement('td');
   const open=document.createElement('button');open.className='secondary';open.textContent=row.status==='enviado'&&!admin()?'Consultar':'Abrir / editar';open.onclick=()=>openOrder(row);td.append(open);
-  if(row.status==='rascunho'){const b=document.createElement('button');b.textContent='Enviar no sistema';b.onclick=()=>submit(row);td.append(b);}const history=document.createElement('button');history.className='secondary';history.textContent='Histórico';history.onclick=()=>audit(row.id);td.append(history);tr.append(td);$('orderRows').append(tr);
+  if(row.status==='rascunho'&&canRecord(HISTORY,row.dados.id||row.id,'editar',row.dados)){const b=document.createElement('button');b.textContent='Enviar no sistema';b.onclick=()=>submit(row);td.append(b);}const history=document.createElement('button');history.className='secondary';history.textContent='Histórico';history.onclick=()=>audit(row.id);td.append(history);tr.append(td);$('orderRows').append(tr);
  }
 }
 function openOrder(row){
  const doc=$('appFrame').contentDocument;if(!doc)return;
  const id=row.dados.id||row.id;
  if(!view.has(recordid(HISTORY,id))||view.get(recordid(HISTORY,id)).versao!==row.versao){notice('Atualize os dados antes de abrir esta versão do pedido.');return;}
- doc.querySelector('[data-tab="guiado"]')?.click();doc.querySelector('[data-action="history"]')?.click();const b=[...doc.querySelectorAll('[data-action="history-open"]')].find(x=>x.dataset.id===id);b?.click();$('appFrame').scrollIntoView({behavior:'smooth'});
+ doc.querySelector('[data-tab="guiado"]')?.click();doc.defaultView.GHOpenOrder?.(id);$('appFrame').scrollIntoView({behavior:'smooth'});
 }
 async function submit(row){
  if(queue.length){notice('Sincronize as alterações pendentes antes de enviar o pedido.');return;}
@@ -172,23 +195,23 @@ async function importLocal(){
 async function initialize(account){
  if(loading||user?.id===account.id&&loaded)return;
  try{
-  user=account;profile=null;loaded=false;window.GHCloud.ready=false;$('appFrame').hidden=true;$('appFrame').removeAttribute('src');
-  const p=await client.from('gh_perfis').select('*').eq('usuario_id',user.id).single();if(p.error)throw Error('Usuário sem perfil autorizado. Peça ao administrador para configurar seu acesso.');profile=p.data;
+  user=account;profile=null;acessos=[];accessChanged=false;loaded=false;window.GHCloud.ready=false;$('appFrame').hidden=true;$('appFrame').removeAttribute('src');
+  const p=await client.from('gh_perfis').select('*').eq('usuario_id',user.id).single();if(p.error)throw Error('Usuário sem perfil autorizado. Peça ao administrador para configurar seu acesso.');profile=p.data;await loadAccess(true);
   const u=await client.from('gh_unidades').select('*').order('codigo');if(u.error)throw u.error;units=u.data;
   try{const saved=JSON.parse(localStorage.getItem(qkey())||'[]');if(!Array.isArray(saved))throw Error();queue=saved;revision=Math.max(0,...queue.map(x=>x.rev||0));}catch{throw Error('Fila local ilegível. Preserve os dados deste navegador antes de continuar.');}
   window.GHCloud.admin=admin();window.GHCloud.unitList=units.map(u=>[u.codigo,u.nome]);
-  $('identity').textContent=profile.nome+' · '+(admin()?'Administrador':profile.unidade_codigo);
+  $('identity').textContent=profile.nome+' · '+(admin()?'Administrador':profile.unidade_codigo||'Equipe');
   $('importLocal').hidden=!admin();$('login').hidden=true;$('workspace').hidden=false;await load();if(!loaded)throw Error('Não foi possível carregar os dados.');await flush();
  }catch(e){$('loginError').textContent=e.message;$('login').hidden=false;$('workspace').hidden=true;user=null;profile=null;loaded=false;}
 }
-function clearAccount(){$('settingsDialog')?.close();window.GHCloud.ready=false;loaded=false;user=null;profile=null;units=[];queue=[];memory=new Map();view=new Map();remote=new Map();$('appFrame').removeAttribute('src');$('appFrame').hidden=true;$('workspace').hidden=true;$('login').hidden=false;$('orderRows').replaceChildren();$('auditRows').replaceChildren();clearTimeout(timer);}
-window.GHCloud={ready:false,admin:false,unitList:[],keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report};
+function clearAccount(){$('settingsDialog')?.close();window.GHCloud.ready=false;loaded=false;user=null;profile=null;units=[];acessos=[];accessChanged=false;queue=[];memory=new Map();view=new Map();remote=new Map();$('appFrame').removeAttribute('src');$('appFrame').hidden=true;$('workspace').hidden=true;$('login').hidden=false;$('orderRows').replaceChildren();$('auditRows').replaceChildren();clearTimeout(timer);}
+window.GHCloud={ready:false,admin:false,unitList:[],keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report,canModule,canRecord,permission,productionSuffix:()=>admin()?'':'-P'+profile.codigo_relatorio,manageUsers:async body=>{if(!admin()||accessChanged)throw Error('Cadastro exclusivo do administrador.');const {data,error}=await client.functions.invoke('gh-usuarios',{body});if(error){let message='Não foi possível concluir o cadastro. Atualize a lista antes de repetir.';try{message=(await error.context.json()).error||message}catch{}throw Error(message)}if(data?.error)throw Error(data.error);return data;}};
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('enter').disabled=true;$('loginError').textContent='';try{const {data,error}=await client.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});$('password').value='';if(error)throw error;await initialize(data.user);}catch(err){$('loginError').textContent=err.message||'Não foi possível entrar.';}finally{$('enter').disabled=false;}};
 $('logout').onclick=async()=>{if(queue.length&&!confirm('Há alterações pendentes preservadas neste navegador para esta conta. Sair mesmo assim?'))return;if(flushing){notice('Aguarde a operação em andamento antes de sair.');return;}clearAccount();await client.auth.signOut({scope:'local'});};
 $('refresh').onclick=async()=>{if(queue.length){notice('Sincronize ou resolva as pendências antes de atualizar.');return;}if(frameDirty&&!confirm('Atualizar a área de trabalho? Campos ainda não salvos serão descartados.'))return;await load(true);};
 $('retry').onclick=async()=>{queue.forEach(x=>x.error=null);persist();connectionError='';await flush();};
 $('backup').onclick=async()=>{
- const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.3',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
+ const snapshot={app:'Guedes Hub',format:'backup-online-v1',version:'5.5',usuario:user.id,gerado_em:new Date().toISOString(),data:Object.fromEntries(memory),pendencias:clone(queue),pendencias_outras_abas:otherQueues().map(x=>x.data),servidor:Object.fromEntries(remote)};
  try{if(navigator.onLine){snapshot.auditoria={pedidos:await all('gh_pedidos_historico'),operacao:await all('gh_alteracoes')};}}catch(e){snapshot.aviso='Auditoria não incluída: '+e.message;}
  download('guedes-hub-backup-online-'+new Date().toISOString().slice(0,10)+'.json',snapshot);
 };

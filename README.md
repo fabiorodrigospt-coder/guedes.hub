@@ -1,4 +1,4 @@
-# Guedes Hub 5.3
+# Guedes Hub 5.5
 
 Aplicação Casa Guedes/Stretto com autenticação Supabase e sincronização por conta. Mantém as telas operacionais do pacote 5.0.
 
@@ -74,3 +74,28 @@ Regressões sintéticas: `npm test`. Para conferir um arquivo original local sem
 - Engrenagem acessível por teclado e identificada como Ajustes abre um diálogo com atualização, exportação/importação de backup, importação local (administrador) e saída.
 - Ajustes operacionais continuam disponíveis ao administrador pelo diálogo. Unidade mantém apenas os controles de conta já permitidos.
 - Testes do navegador verificam os dois perfis, abertura/fechamento do diálogo, identificação sem e-mail e preservação de sincronização. Layout visual conferido em 390 px.
+
+## Cadastro de usuários e níveis de acesso — 5.5
+
+Em Gestão Local, somente o administrador tem o formulário Cadastro de usuários. Cria contas reais no Supabase Auth com nome, e-mail e senha, associa uma das casas existentes e libera um ou mais módulos: pedidos, produção e salgados. A senha deve ter 12 a 128 caracteres. Na edição, deixar a senha vazia mantém a atual; o e-mail de login não é alterado pelo formulário. Não cria novos administradores nem modifica contas de administrador.
+
+Cada módulo define consulta, edição e criação separadamente. O padrão é somente registros do próprio autor. Pedidos também admitem mesma casa, casas adicionais selecionadas e todas as casas; produção e salgados admitem próprios registros ou todo o setor. Edição nunca pode ser mais ampla que consulta. Pedidos enviados continuam bloqueados para edição por não administradores. Desativação e mudanças de permissões são verificadas no banco a cada operação; a interface detecta a revisão alterada e exige nova entrada, preservando pendências locais para exportação.
+
+As contas anteriores de unidade sem configuração explícita mantêm o módulo de pedidos, agora restrito ao próprio autor e à casa vinculada. Rascunhos e modelos de novos usuários usam escopo pessoal `usuario:<uuid>`; documentos antigos continuam preservados. Produção de colaboradores recebe um sufixo de operador no número de controle para evitar colisão com o controle existente do administrador.
+
+### Backend e instalação
+
+- `db/usuarios_acessos.sql` contém a migração consolidada, já aplicada neste projeto, incluindo as correções transacionais. Para uma restauração vazia, aplicar após `db/schema_snapshot.sql`; não reaplicar sobre o banco atual.
+- `supabase/functions/gh-usuarios/` contém a Edge Function implantada. As variáveis padrão `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` ficam exclusivamente no servidor. Nenhuma chave privilegiada está nos arquivos do cliente.
+- O gateway está com `verify_jwt=false` porque a função valida explicitamente o token via Auth `/user` e consulta o perfil ativo do chamador antes de qualquer operação administrativa. Não há modo anônimo de cadastro. As RPCs de provisionamento e listagem aceitam execução somente por `service_role`.
+- Perfis, módulos, alterações de acesso e autoria são persistidos no banco. `gh_usuarios_auditoria` registra alterações sem senhas; tem RLS, sem privilégios para clientes e sem políticas de acesso direto, intencionalmente.
+- A criação não envia convite por e-mail. O administrador define a senha no formulário e entrega as credenciais à pessoa. Não inserir senhas em mensagens, arquivos de configuração ou código.
+
+### Validação 5.5
+
+- `tests/access.sql`, executado no banco real com rollback: isolamento entre pessoas da mesma casa e de casas diferentes; consulta sem edição; edição de casas selecionadas; produção e salgados por autor; rascunhos pessoais; bloqueio após envio; conta desativada; proibição de autoelevação; revisão concorrente e auditoria dos acessos. Nenhum usuário temporário permaneceu.
+- `tests/users-server.test.cjs`: autenticação e autorização do endpoint, criação via API simulada, limpeza de conta recém-criada quando a configuração falha, senha fora da resposta e proteção de administradores.
+- `tests/browser.test.cjs`: cadastro e edição pela interface com API simulada, senhas ausentes do armazenamento local, menus de colaborador, gravação pelos formulários reais de produção/salgados e detecção de revogação. Layout conferido em desktop e 390 px.
+- Endpoint implantado: chamadas sem token e com token inválido retornaram 401. O primeiro cadastro real e o login com a senha definida devem ser feitos pelo titular no formulário; nenhum usuário operacional foi criado durante o desenvolvimento.
+
+Se houver uma falha de rede durante um cadastro, atualizar a lista antes de tentar novamente. Um e-mail já existente não é sobrescrito pelo fluxo de criação. Se a conta existir no Auth sem perfil (provisionamento interrompido), ela não recebe acesso ao aplicativo e precisa de revisão administrativa.

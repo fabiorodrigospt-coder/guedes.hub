@@ -1,4 +1,4 @@
-# Guedes Hub 5.3 — estado de retomada
+# Guedes Hub 5.5 — estado de retomada
 
 ## Escopo autorizado e implementado
 - Sincronização dos pedidos, produção, salgados, históricos, catálogos, modelos, preferências, rascunhos e gestão operacional.
@@ -40,3 +40,12 @@ Publicação: o código validado foi promovido para main por atualização atôm
 - Implementado diálogo acessível para os controles existentes, sem mudar permissões ou banco. Ajustes operacionais do administrador preservados.
 - Testes do leitor com lista original, navegador (administrador e G1) e worker passaram; visual mobile conferido.
 - Publicação autorizada no endereço de teste. Usuário deve verificar versão 5.3 ao atualizar.
+
+## Cadastro e permissões 5.5 — 28/10/2026
+- Escopo confirmado por Fabio: cadastrar pessoas das casas, produção e salgados com nome/e-mail/senha; administrador escolhe módulos, consulta/edição e criação. Padrão: somente próprios registros, sem outras casas.
+- Base GitHub: 2850b7cb60caadcd78d21b30c29e3dede567b4b8. Layout 5.4 e ocultação de botões das casas preservados.
+- Migrações aplicadas: gh55_usuarios_acessos, gh55_configuracao_usuarios_alias e gh55_codigos_operadores; versão consolidada em db/usuarios_acessos.sql.
+- Edge Function gh-usuarios ativa. Valida token via Auth e perfil administrador ativo antes de usar a chave privilegiada interna. RPCs somente service_role; sem senhas em tabelas, logs do aplicativo, filas ou backups.
+- Novo formulário users.js inserido em Gestão Local apenas para administrador. Cadastro, edição de permissões/senha e desativação. Administradores protegidos.
+- SQL real com rollback passou, endpoint nega chamadas anônimas/inválidas; testes do servidor, navegador com API simulada, leitor original 25 produtos e worker passaram. Sem usuários temporários persistidos.
+- Ao atualizar para 5.5, Fabio pode criar a primeira conta real pela Gestão Local e validar o login. Não pedir novamente credenciais de infraestrutura nem senhas de usuários no chat.
