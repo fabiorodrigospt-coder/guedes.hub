@@ -61,3 +61,7 @@ Publicação: o código validado foi promovido para main por atualização atôm
 
 ## Versão 5.7 — identificação automática nos relatórios
 Relatórios novos de produção e salgados preenchem responsável/líder com o nome do perfil autenticado. Trocar a data de uma produção nova mantém esse preenchimento. Abrir relatórios existentes preserva o nome registrado. Não altera contas, permissões ou dados históricos.
+
+
+## Versão 5.8 — validação e mensagens curtas
+Campos obrigatórios e valores inválidos recebem borda vermelha, aviso curto, aria-invalid/aria-describedby e foco no primeiro erro. Pedidos guiados destacam casa, modo, data e quantidades; relatórios e formulários de cadastro destacam os campos envolvidos. Campos opcionais permanecem opcionais. Avisos somem ao corrigir. Salvamento de pedidos e relatórios mostra fila/offline/erro e só confirma Salvo após a confirmação do banco. Sem alterações nas permissões ou no banco.
