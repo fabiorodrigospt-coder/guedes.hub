@@ -1,5 +1,7 @@
 -- Snapshot do schema Guedes Hub. Restaurar SOMENTE em projeto Supabase vazio.
 -- Não contém usuários, senhas, tokens nem dados operacionais.
+begin;
+
 create schema if not exists gh_privado;
 revoke all on schema gh_privado from public,anon,authenticated;
 
@@ -410,3 +412,5 @@ CREATE TRIGGER gh_preparar_edicao BEFORE UPDATE ON gh_pedidos FOR EACH ROW EXECU
 CREATE TRIGGER gh_versionar_documento BEFORE UPDATE ON gh_documentos FOR EACH ROW EXECUTE FUNCTION gh_versionar_documento();
 
 CREATE TRIGGER gh_versionar_operacao_central BEFORE UPDATE ON gh_operacao_central FOR EACH ROW EXECUTE FUNCTION gh_versionar_operacao_central();
+
+commit;

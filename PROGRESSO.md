@@ -20,8 +20,8 @@
 - Senhas nunca foram solicitadas. Login real pelo titular continua necessário para validação final em aparelhos físicos.
 
 ## Próximo passo
-Publicar o commit validado na branch main do repositório de teste e confirmar o carregamento pelo GitHub Pages. Então orientar Fabio a entrar com o usuário administrador e importar os dados antigos no navegador original.
+Código validado publicado na main no commit ff4a090d2bd4150c1de3b30282c732546c63df1f. GitHub Pages iniciou a implantação. Confirmar carregamento e orientar Fabio a entrar com o usuário administrador e importar os dados antigos no navegador original.
 
 Detalhes de funcionamento, limitações e verificação em README.md. Não recriar projeto nem pedir novamente os dados já configurados.
 
-Publicação: o código validado está sendo promovido para main por atualização atômica do Git. Nenhum dado operacional é incluído no repositório; somente código, estrutura e testes.
+Publicação: o código validado foi promovido para main por atualização atômica do Git. Nenhum dado operacional é incluído no repositório; somente código, estrutura e testes.
