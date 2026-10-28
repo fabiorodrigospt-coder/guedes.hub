@@ -1,9 +1,10 @@
 'use strict';
-const CACHE='guedes-hub-online-5-1-v1';
+const APP='gh-online-'+new URL(self.registration.scope).pathname.replace(/[^a-z0-9]/gi,'_');
+const CACHE=APP+'-5-1-v1';
 const FILES=['./','./index.html','./workspace.html','./frame-bridge.js','./cloud.js','./online.css','./manifest.webmanifest','./vendor/supabase-2.118.0.js','./casa-guedes-logo.png','./icon-192.png','./icon-512.png'];
 const allowed=new Set(FILES.map(f=>new URL(f,self.location.href).pathname));
 self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting())));
-self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('guedes-hub-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
+self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(APP+'-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{
  const r=event.request,u=new URL(r.url);
  // Only the static application shell is cached. Auth and API requests are never cached.

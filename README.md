@@ -45,7 +45,7 @@ O SDK Supabase 2.118.0 e sua licença estão em `vendor/`; o navegador não depe
 
 - SQL no projeto: administrador, isolamento de documentos por unidade, bloqueio da operação central, versões, auditoria, bloqueio de elevação de perfil e acesso anônimo.
 - Navegadores com API simulada: formulário original de produção, salgados, modelos, segundo dispositivo, conflito de versão, envio/bloqueio, importação preservando a origem, reconciliação de resposta perdida, fila offline e logout.
-- Worker: atualização do cache anterior, somente arquivos estáticos, API fora do cache e abertura da interface offline.
+- Worker: cache separado por aplicação, preservação dos caches de outros aplicativos, somente arquivos estáticos, API fora do cache e abertura da interface offline.
 - Interface responsiva: ausência de transbordamento horizontal em 390 px.
 - API real: chave pública aceita pelo Auth; consulta anônima das tabelas bloqueada.
 
