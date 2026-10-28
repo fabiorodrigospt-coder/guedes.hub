@@ -1,0 +1,6 @@
+Guedes Hub 5.0 — Instalação e diagnóstico offline
+
+Abre index.html para testar localmente. O cache offline e a instalação dependem de hospedagem HTTPS (ou localhost).
+Os dados permanecem no armazenamento do navegador; use Dados e Segurança para exportar backup antes de trocar a versão.
+Este pacote não ativa banco online, sincronização entre aparelhos ou autenticação segura.
+Ainda exige testes reais em Android e recuperação de backups.
