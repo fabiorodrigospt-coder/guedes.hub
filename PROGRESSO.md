@@ -1,4 +1,4 @@
-# Guedes Hub 5.2 — estado de retomada
+# Guedes Hub 5.3 — estado de retomada
 
 ## Escopo autorizado e implementado
 - Sincronização dos pedidos, produção, salgados, históricos, catálogos, modelos, preferências, rascunhos e gestão operacional.
@@ -33,3 +33,10 @@ Publicação: o código validado foi promovido para main por atualização atôm
 - Testes do leitor, navegador com API simulada (incluindo salvar/reabrir a leitura) e worker passaram.
 - Versão 5.2 preparada para o mesmo endereço de teste. Nenhuma migração de banco ou escrita em dados operacionais foi feita nesta correção.
 - Próximo passo do usuário após implantação: Ctrl+F5, verificar 5.2 e analisar novamente a lista original. Os históricos antigos não são recalculados automaticamente.
+
+## Ajustes visuais 5.3 — 28/10/2026
+- Base preservada: e5de30347df125ea15a3b4e0328ac7f654564596, já com menu externo único.
+- Solicitação de Fabio: somente Casa Guedes, conta sem e-mail, manutenção dentro de Ajustes por engrenagem discreta.
+- Implementado diálogo acessível para os controles existentes, sem mudar permissões ou banco. Ajustes operacionais do administrador preservados.
+- Testes do leitor com lista original, navegador (administrador e G1) e worker passaram; visual mobile conferido.
+- Publicação autorizada no endereço de teste. Usuário deve verificar versão 5.3 ao atualizar.

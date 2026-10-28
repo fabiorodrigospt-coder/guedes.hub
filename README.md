@@ -1,4 +1,4 @@
-# Guedes Hub 5.2
+# Guedes Hub 5.3
 
 Aplicação Casa Guedes/Stretto com autenticação Supabase e sincronização por conta. Mantém as telas operacionais do pacote 5.0.
 
@@ -66,3 +66,11 @@ O Security Advisor também sinalizou proteção contra senhas vazadas desativada
 Relatórios antigos não são reprocessados automaticamente: para recuperar itens descartados pelo leitor anterior, cole a lista original e use **Analisar listas** novamente. A versão não executa migrações nem altera registros existentes no banco.
 
 Regressões sintéticas: `npm test`. Para conferir um arquivo original local sem versioná-lo: `GH_ORIGINAL_LIST=/caminho/lista.txt npm test` (a conferência opcional espera a lista de 27/10/2026 usada nesta correção).
+
+## Identificação e Ajustes — 5.3
+
+- Cabeçalho, identificação institucional e rodapé usam Casa Guedes.
+- Cartão da conta exibe nome e perfil, sem o e-mail; mantém o status de sincronização.
+- Engrenagem acessível por teclado e identificada como Ajustes abre um diálogo com atualização, exportação/importação de backup, importação local (administrador) e saída.
+- Ajustes operacionais continuam disponíveis ao administrador pelo diálogo. Unidade mantém apenas os controles de conta já permitidos.
+- Testes do navegador verificam os dois perfis, abertura/fechamento do diálogo, identificação sem e-mail e preservação de sincronização. Layout visual conferido em 390 px.
