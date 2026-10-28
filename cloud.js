@@ -88,7 +88,7 @@ async function load(reload=false){
   const changes=Object.entries(data).some(([table,rows])=>rows.some(r=>{let id;if(table==='gh_documentos')id=docid(r.escopo,r.chave);else{const key=table==='gh_pedidos'?HISTORY:r.modulo==='producao'?PROD:SAL;id=recordid(key,r.dados.id||r.id);}return view.get(id)?.versao!==r.versao;}));
   if(changes&&!queue.length)notice('Há dados novos no banco. Use Atualizar dados para carregar na área de trabalho sem perder o formulário aberto.');
  }
- connectionError='';status();
+ connectionError='';if(!queue.length&&['Alteração preservada','Sem conexão:','Não foi possível atualizar:'].some(prefix=>$('notice').textContent.startsWith(prefix)))notice('');status();
  }catch(e){if(user?.id===actor)report('Não foi possível atualizar: '+(e.message||String(e)));}finally{loading=false;}
 }
 function queryIdentity(q,op){return op.escopo?q.eq('escopo',op.escopo).eq('chave',op.key):q.eq('id',op.dbid);}

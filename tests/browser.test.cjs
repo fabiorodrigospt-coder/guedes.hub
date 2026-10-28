@@ -53,7 +53,7 @@ async function settled(page){try{await page.waitForFunction(()=>document.querySe
  // A lost network response must not create duplicate records on retry.
  dropNextWrite=true;await a.page.evaluate(()=>{const rows=JSON.parse(GHCloud.get('guedes-salgados-v1'));rows.push({id:'sal-resposta-perdida',date:'2026-10-28',leader:'Fabio',items:[],notes:'',fields:{},clean:[],layout:'visual'});GHCloud.set('guedes-salgados-v1',JSON.stringify(rows));});
  await a.page.waitForFunction(()=>document.querySelector('#pendingList').textContent.includes('Failed')||document.querySelector('#pendingList').textContent.includes('fetch'));
- await a.page.locator('#retry').click();await settled(a.page);assert.equal(db.gh_operacao_central.filter(r=>r.dados.id==='sal-resposta-perdida').length,1);
+ await a.page.locator('#retry').click();await settled(a.page);assert.equal(db.gh_operacao_central.filter(r=>r.dados.id==='sal-resposta-perdida').length,1);assert.equal(await a.page.locator('#notice').isVisible(),false);
  // Second device receives both modules and configuration.
  const b=await context(browser,'admin');const mirror=await b.page.evaluate(()=>({sal:JSON.parse(GHCloud.get('guedes-salgados-v1')),prod:JSON.parse(GHCloud.get('guedes-hub-production-v1')),models:JSON.parse(GHCloud.get('gh43-pedido-modelos-v1'))}));assert.equal(mirror.sal.length,2);assert.equal(mirror.prod.length,2);assert.equal(mirror.models[0].name,'Modelo');
  // Optimistic concurrency: first editor wins; stale editor stays pending.
