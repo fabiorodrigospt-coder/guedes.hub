@@ -84,7 +84,7 @@ async function newOrder(page,code){
  const clients={};
  try{
    for(const code of codes){
-     const who='house'+code,client=await context(browser,who,true);
+     const who='house'+code,client=await context(browser,who);
      clients[code]=client;
      assert.equal(await client.page.locator('#identity').textContent(),'Teste '+code+' · '+code);
      const available=await client.page.evaluate(()=>GHCloud.unitList.map(u=>u[0]));
@@ -139,7 +139,7 @@ async function newOrder(page,code){
    assert.equal(new Set(full.map(r=>r.unit)).size,6);
    diagnostics.push({cenario:'Administrador visualiza seis unidades, isolamento lateral',resultado:'PASSOU'});
    // Conflito otimista entre dois celulares da mesma unidade.
-   const second=await context(browser,'houseG1',true);
+   const second=await context(browser,'houseG1');
    const original=JSON.parse(await second.page.evaluate(key=>GHCloud.get(key),HISTORY));
    assert.equal(original.length,1);
    const firstUpdate=await clients.G1.page.evaluate(key=>{
