@@ -94,6 +94,23 @@ async function newOrder(page,code){
      assert.equal(await client.page.locator('#appNav [data-target="salgados"]').isVisible(),false);
      const f=await newOrder(client.page,code);
      const first=f.locator('#pgApp [data-field="pedido"]').first();
+     // Varredura de TODOS os campos visiveis de estoque/pedido nesta casa.
+     const sweep=await f.locator('#pgApp [data-field]').evaluateAll(els=>{
+       const invalid=[];
+       for(let i=0;i<els.length;i++){
+         const el=els[i],molho=el.dataset.cat==='Francesinha'&&el.dataset.prod==='Molho Francesinha'&&el.dataset.field==='pedido';
+         el.value=molho?'1':String((i%7)+1);
+         el.dispatchEvent(new Event('input',{bubbles:true}));
+         if(!el.validity.valid)invalid.push(el.dataset.cat+'/'+el.dataset.prod+'/'+el.dataset.field);
+       }
+       return {total:els.length,invalid};
+     });
+     assert(sweep.total>=10,'Catalogo sem campos suficientes em '+code);
+     assert.deepEqual(sweep.invalid,[],'Campos com rejeicao inesperada em '+code);
+     await first.fill('texto-invalido');
+     assert.equal(await first.evaluate(el=>el.validity.customError),true,'Campo invalido nao sinalizado');
+     await first.fill('0');
+     assert.equal(await first.evaluate(el=>el.validity.customError),false,'Zero deve ser aceito');
      if(code==='G4'){
        const molho=f.locator('#pgApp [data-cat="Francesinha"][data-prod="Molho Francesinha"][data-field="pedido"]');
        assert.equal(await molho.count(),1);
@@ -124,8 +141,8 @@ async function newOrder(page,code){
        try{GHCloud.set(p,JSON.stringify(rows));return false;}catch{return true;}
      },HISTORY);
      assert.equal(blocked,true,'Tentativa de escrever em outra casa bloqueada: '+code);
-     diagnostics.push({unidade:code,cenario:'Login, pedido guiado, historico e isolamento',resultado:'PASSOU'});
-     console.log('PASS: '+code+' — login, campos, validacao, pedido, historico, isolamento e salvamento simulado.');
+     diagnostics.push({unidade:code,campos_validados:sweep.total,cenario:'Todos os campos de pedido/estoque, login, historico e isolamento',resultado:'PASSOU'});
+     console.log('PASS: '+code+' — '+sweep.total+' campos, invalidos, zero, pedido, historico, isolamento e salvamento simulado.');
    }
    // Uma conta de cada casa nunca pode ler o historico de outra casa.
    for(const code of codes){
