@@ -29,6 +29,19 @@ assert.equal(rows[0].name,'Bolo Bolacha');assert.equal(rows[1].name,'Mousse');as
 rows=parse('CASA GUEDES G7\nPEDIDOS:\nMolho Francesinha - 2 bidões\nMolho Francesinha - 1 L\nGouda Fatiado 9 kg - 3 caixas\nMolho Brava - 1 L\nMolho Brava - 1 kg');
 assert.equal(rows[0].qty,60);assert.equal(rows[1].qty,1);assert.equal(rows[2].qty,27);
 ctx.rows=rows;assert.equal(run('groups(rows).filter(e=>e.name==="Molho Brava").length'),2,'Mass and volume cannot be added together');
+// Regressões: limite diário de 300 L em todas as casas, sem incluir CONTAGEM.
+rows=parse('CASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 30');
+assert.equal(rows[0].qty,30,'30 sem unidade = 30 L');ctx.rows=rows;assert.equal(run('gh59MolhoErrors(rows).length'),0);
+rows=parse('CASA GUEDES G1\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 9\nCASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 30');
+ctx.rows=rows;assert.equal(run('gh59MolhoErrors(rows).length'),0,'9 bidões + 30 L = 300 L');
+rows=parse('CASA GUEDES G1\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 9\nCASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 2');
+ctx.rows=rows;assert.match(run("gh59MolhoErrors(rows).join(' | ')"),/330 L/,'11 bidões bloqueados');
+rows=parse('CASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 30 bidões');
+ctx.rows=rows;assert.equal(rows[0].qty,900);assert.match(run("gh59MolhoErrors(rows).join(' | ')"),/900 L/);
+rows=parse('CASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 11');
+ctx.rows=rows;assert.match(run("gh59MolhoErrors(rows).join(' | ')"),/ambígua/,'quantidade incerta bloqueada');
+rows=parse('CASA GUEDES G1\nDia: 29/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 10\nCASA GUEDES G4\nDia: 30/10/2026\nPEDIDOS:\nFRANCESINHA\nMolho Francesinha - 10');
+ctx.rows=rows;assert.equal(run('gh59MolhoErrors(rows).length'),0,'datas separadas');
 if(process.env.GH_ORIGINAL_LIST){
  ctx.input=fs.readFileSync(process.env.GH_ORIGINAL_LIST,'utf8');run('entries=parse(input)');
  const expected={'Pernil':3,'Molho Pernil':2,'Batata Gratin':20,'Baba de Camelo':21,'Bolo Bolacha':24,'Bolo Cenoura Pote':10,'Mousse':22,'Tarte de Lima':2,'Raspas de Chocolate':8,'Tiramissu':5,'Bacon Caramelizado':200,'Molho Francesinha':30,'Gouda Fatiado 9 kg':9,'Molho Brava':2,'Molho Brava Picante':2,'Molho Mostarda':1,'Molho Padrón':1,'Molho Caeser':2,'Molho Prego':1,'Chimichurri':3,'Redução Porto Branco':1,'Redução Porto Ruby':2,'Redução Porto Tawny':6,'Sal de Bacalhau':1,'Sal de Camarão':1};

@@ -65,3 +65,9 @@ Relatórios novos de produção e salgados preenchem responsável/líder com o n
 
 ## Versão 5.8 — validação e mensagens curtas
 Campos obrigatórios e valores inválidos recebem borda vermelha, aviso curto, aria-invalid/aria-describedby e foco no primeiro erro. Pedidos guiados destacam casa, modo, data e quantidades; relatórios e formulários de cadastro destacam os campos envolvidos. Campos opcionais permanecem opcionais. Avisos somem ao corrigir. Salvamento de pedidos e relatórios mostra fila/offline/erro e só confirma Salvo após a confirmação do banco. Sem alterações nas permissões ou no banco.
+
+
+## Versão 5.9 — correção Molho Francesinha (30/10/2026)
+- Leitor: `30` sem unidade passa a 30 L; teto 300 L por dia e todas as casas, com bloqueio de salvar/enviar.
+- Pedido Guiado: teto do histórico acessível em bidões; não há garantia global transacional entre dispositivos até validação servidor.
+- Testes de regressão adicionados; conferir implantação GitHub Pages.

@@ -1,4 +1,4 @@
-# Guedes Hub 5.6
+# Guedes Hub 5.9
 
 Aplicação Casa Guedes/Stretto com autenticação Supabase e sincronização por conta. Mantém as telas operacionais do pacote 5.0.
 
@@ -120,3 +120,8 @@ Relatórios novos de produção e salgados preenchem responsável/líder com o n
 
 ## Versão 5.8 — validação e mensagens curtas
 Campos obrigatórios e valores inválidos recebem borda vermelha, aviso curto, aria-invalid/aria-describedby e foco no primeiro erro. Pedidos guiados destacam casa, modo, data e quantidades; relatórios e formulários de cadastro destacam os campos envolvidos. Campos opcionais permanecem opcionais. Avisos somem ao corrigir. Salvamento de pedidos e relatórios mostra fila/offline/erro e só confirma Salvo após a confirmação do banco. Sem alterações nas permissões ou no banco.
+
+
+## Versão 5.9 — limite Molho Francesinha
+
+No leitor, entrada `30` sem unidade equivale a 30 litros, não 30 bidões. Múltiplos de 30 acima de 10 são lidos como litros com aviso; valores acima de 10 sem unidade e não múltiplos de 30 exigem correção manual. Pedidos acima de 300 litros/dia, somando todas as casas da lista, bloqueiam salvamento, WhatsApp e cópia de histórico. Filtros não reduzem o total. CONTAGEM não entra na soma. Pedido Guiado aceita bidões (1 = 30 L) e confere pedidos visíveis no histórico local sincronizado. O limite entre aparelhos só é garantido se todos os pedidos relevantes estiverem visíveis; ainda falta validação transacional no servidor. Registros antigos não são corrigidos automaticamente. Sem alterações no banco ou nas permissões.
