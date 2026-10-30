@@ -1,0 +1,73 @@
+name: Auditoria automatica — Guedes Hub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 7 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: auditoria-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  auditoria:
+    name: Testes automatizados
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Obter codigo
+        uses: actions/checkout@v4
+      - name: Preparar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Instalar navegador
+        run: npx playwright install --with-deps chromium
+      - name: Criar pasta de resultados
+        run: mkdir -p auditoria
+      - name: Testar interface e regras com dados ficticios
+        shell: bash
+        run: |
+          set -o pipefail
+          npm test 2>&1 | tee auditoria/testes.log
+      - name: Verificar site publicado sem autenticar nem salvar pedidos
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_SITE_URL: https://fabiorodrigospt-coder.github.io/guedes.hub/
+        run: |
+          set -o pipefail
+          node tests/live-smoke.test.cjs 2>&1 | tee auditoria/site.log
+      - name: Resumo da auditoria
+        if: always()
+        shell: bash
+        run: |
+          echo "## Auditoria Guedes Hub" >> "$GITHUB_STEP_SUMMARY"
+          echo "Testes funcionais executados com dados ficticios; nenhum pedido real foi enviado." >> "$GITHUB_STEP_SUMMARY"
+          for f in auditoria/testes.log auditoria/site.log; do
+            if [ -f "$f" ]; then
+              echo "### $f" >> "$GITHUB_STEP_SUMMARY"
+              echo '\`\`\`text' >> "$GITHUB_STEP_SUMMARY"
+              tail -n 60 "$f" >> "$GITHUB_STEP_SUMMARY"
+              echo '\`\`\`' >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+      - name: Guardar relatorios e capturas
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auditoria-guedes-hub-${{ github.run_number }}
+          path: |
+            auditoria/
+            /tmp/guedes-admin.png
+            /tmp/guedes-mobile.png
+          if-no-files-found: warn
+          retention-days: 14

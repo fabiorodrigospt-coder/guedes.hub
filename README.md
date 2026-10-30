@@ -125,3 +125,9 @@ Campos obrigatórios e valores inválidos recebem borda vermelha, aviso curto, a
 ## Versão 5.9 — limite Molho Francesinha
 
 No leitor, entrada `30` sem unidade equivale a 30 litros, não 30 bidões. Múltiplos de 30 acima de 10 são lidos como litros com aviso; valores acima de 10 sem unidade e não múltiplos de 30 exigem correção manual. Pedidos acima de 300 litros/dia, somando todas as casas da lista, bloqueiam salvamento, WhatsApp e cópia de histórico. Filtros não reduzem o total. CONTAGEM não entra na soma. Pedido Guiado aceita bidões (1 = 30 L) e confere pedidos visíveis no histórico local sincronizado. O limite entre aparelhos só é garantido se todos os pedidos relevantes estiverem visíveis; ainda falta validação transacional no servidor. Registros antigos não são corrigidos automaticamente. Sem alterações no banco ou nas permissões.
+
+## Auditoria automatizada (5.9)
+
+O workflow `.github/workflows/auditoria-guedes-hub.yml` executa `npm test` em cada atualizacao de `main` e semanalmente (segunda-feira, 07:00 UTC), com acionamento manual em **Actions** > **Auditoria automatica — Guedes Hub** > **Run workflow**. Usa Playwright com API e registros ficticios: **nao cria nem altera pedidos reais**. Relatorios e capturas sao anexados na execucao do GitHub Actions por 14 dias. Executa tambem `tests/version-consistency.test.cjs`, que confere a versao entre interface, iframe, backup e cache.
+
+Na execucao manual ou semanal, `tests/live-smoke.test.cjs` abre o **site publico**, confere desktop e celular, carregamento, versao, campos de login e erros JavaScript **sem enviar credenciais**. Esse teste nao faz login, nao envia WhatsApp e nao altera o banco de producao. O conjunto nao garante ausencia de todos os erros: fluxos autenticados completos entre varias unidades exigem ambiente de homologacao isolado, contas ficticias proprias e simulacoes concorrentes.
