@@ -3,7 +3,7 @@
   "version": "5.9.0",
   "private": true,
   "scripts": {
-    "test": "node tests/version-consistency.test.cjs && node tests/reader.test.cjs && node tests/login-server.test.cjs && node tests/users-server.test.cjs && node tests/browser.test.cjs && node tests/worker.test.cjs"
+    "test": "node tests/version-consistency.test.cjs && node tests/reader.test.cjs && node tests/login-server.test.cjs && node tests/users-server.test.cjs && node tests/browser.test.cjs && node tests/homologation.test.cjs && node tests/worker.test.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

@@ -131,3 +131,10 @@ No leitor, entrada `30` sem unidade equivale a 30 litros, não 30 bidões. Múlt
 O workflow `.github/workflows/auditoria-guedes-hub.yml` executa `npm test` em cada atualizacao de `main` e semanalmente (segunda-feira, 07:00 UTC), com acionamento manual em **Actions** > **Auditoria automatica — Guedes Hub** > **Run workflow**. Usa Playwright com API e registros ficticios: **nao cria nem altera pedidos reais**. Relatorios e capturas sao anexados na execucao do GitHub Actions por 14 dias. Executa tambem `tests/version-consistency.test.cjs`, que confere a versao entre interface, iframe, backup e cache.
 
 Na execucao manual ou semanal, `tests/live-smoke.test.cjs` abre o **site publico**, confere desktop e celular, carregamento, versao, campos de login e erros JavaScript **sem enviar credenciais**. Esse teste nao faz login, nao envia WhatsApp e nao altera o banco de producao. O conjunto nao garante ausencia de todos os erros: fluxos autenticados completos entre varias unidades exigem ambiente de homologacao isolado, contas ficticias proprias e simulacoes concorrentes.
+
+
+## Homologacao isolada — seis unidades
+
+O teste `tests/homologation.test.cjs` utiliza Chromium e a interface real servida em `127.0.0.1:8876`; substitui a API do Supabase por respostas ficticias interceptadas pelo Playwright. O teste nao autentica contas de producao, nao chama o banco real e nao envia WhatsApp. Cobre login, escolha de unidade, preenchimento de pedidos, conferencia, salvamento, historico, RLS simulada, acesso do administrador, alteracao conflitante em dois navegadores, exclusao logica de usuarios mantendo seus historicos e bloqueio local por quantidade acima de 300 L. O relatorio `auditoria/homologacao.json` fica no artefato da execucao do GitHub Actions.
+
+**Limitacao conhecida:** o teste intercepta a API e verifica o controle de permissao modelado, nao substitui testes RLS reais. A soma de 300 L de Molho Francesinha **entre todas as contas e em edicoes concorrentes** ainda exige uma regra transacional no banco real e outra bateria em banco de homologacao separado. Nao foi criado projeto Supabase nem alterada a base de producao.
