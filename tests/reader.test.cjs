@@ -5,7 +5,7 @@ const start=html.indexOf('const UNITS=');
 const end=html.indexOf('function showTab(id)',start);
 const original=html.slice(html.indexOf('const ORIGINAL={')).split('\nconst clone=')[0];
 const categories=['Francesinha','Salgados','Cozinha','Pernil','Sobremesas','Molhos','Outros','Produtos'];
-const nodes={section:{value:'PEDIDOS'},mode:{value:'total'},categories:{querySelectorAll:()=>categories.map(value=>({value}))},units:{querySelectorAll:()=>['G1','G2','G4','G5','G7','S1'].map(value=>({value}))}};
+const nodes={previewToggle:{},section:{value:'PEDIDOS'},mode:{value:'total'},categories:{querySelectorAll:()=>categories.map(value=>({value}))},units:{querySelectorAll:()=>['G1','G2','G4','G5','G7','S1'].map(value=>({value}))}};
 const ctx=vm.createContext({console,crypto:require('node:crypto').webcrypto,document:{getElementById:id=>nodes[id]},window:{},Date});
 vm.runInContext(original+"\nwindow.GH48Catalog={base:u=>ORIGINAL[u==='S1'?'S1':'G'],get:(u,fallback)=>fallback};",ctx);
 vm.runInContext(html.slice(start,end),ctx);
