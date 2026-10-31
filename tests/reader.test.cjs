@@ -19,6 +19,20 @@ assert.equal(run('groups(filtered()).length'),25,'All categories and Stretto mus
 assert.equal(run('filtered().some(e=>e.section!=="PEDIDOS")'),false);
 assert.equal(run('filtered().find(e=>e.name==="Cebola Reduzida").qty'),null);
 assert.equal(run('filtered().find(e=>e.name==="Bacon Caramelizado"&&e.unit==="S1").qty'),0);
+
+// Bacon não integra Francesinha; permanece disponível apenas no catálogo Produtos S1.
+assert.equal(run("ORIGINAL.G.some(([c,items])=>c==='Francesinha'&&items.includes('Bacon Caramelizado'))"),false);
+assert.equal(run("ORIGINAL.S1.some(([c,items])=>c==='Produtos'&&items.includes('Bacon Caramelizado'))"),true);
+let baconRows=parse('CASA GUEDES G2\\nPEDIDOS:\\nFRANCESINHA\\nBacon Caramelizado - 200\\nBase de Cachorro - 1\\nSTRETTO S1\\nPEDIDOS:\\nPRODUTOS\\nBacon Caramelizado - 5');
+assert.equal(baconRows.some(e=>e.name==='Bacon Caramelizado'&&e.unit==='G2'),false);
+assert.equal(baconRows.find(e=>e.name==='Bacon Caramelizado'&&e.unit==='S1').qty,5);
+ctx.rows=[{name:'Bacon Caramelizado',category:'Francesinha',qty:200,measure:'un',unit:'G2',section:'PEDIDOS'},{name:'Bacon Caramelizado',category:'Produtos',qty:5,measure:'un',unit:'S1',section:'PEDIDOS'}];
+run('entries=rows');
+assert.equal(run("filtered().length"),1,'Histórico antigo com Bacon em Francesinha deve ser filtrado');
+assert.doesNotMatch(run('buildMessage()'),/Bacon Caramelizado: 200/);
+assert.match(run('buildMessage()'),/Bacon Caramelizado: 5/);
+run('entries=parse(input)');
+
 assert.match(run('buildMessage()'),/Tiramissu: 5/);
 assert.equal(run('filtered().find(e=>e.name==="Molho Francesinha").qty'),30);
 assert.equal(run('filtered().find(e=>e.name==="Gouda Fatiado 9 kg").qty'),9);
