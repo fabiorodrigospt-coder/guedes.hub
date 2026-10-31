@@ -31,6 +31,7 @@ run('entries=rows');
 assert.equal(run("filtered().length"),1,'Histórico antigo com Bacon em Francesinha deve ser filtrado');
 assert.doesNotMatch(run('buildMessage()'),/Bacon Caramelizado: 200/);
 assert.match(run('buildMessage()'),/Bacon Caramelizado: 5/);
+ctx.input=synthetic;
 run('entries=parse(input)');
 
 assert.match(run('buildMessage()'),/Tiramissu: 5/);
