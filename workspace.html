@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 53297)
-Total output lines: 828
-
 <!DOCTYPE html>
 <html lang="pt-BR"><head><style>html{visibility:hidden}</style><script src="feedback.js?v=5.9"></script><script src="frame-bridge.js?v=5.9"></script><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"/><meta content="#98132d" name="theme-color"/><link href="manifest.webmanifest" rel="manifest"/><title>Guedes Hub 5.10</title><style>
 :root{font-family:system-ui,-apple-system,Segoe UI,sans-serif;color:#32221f;background:#f8f5f0}*{box-sizing:border-box}body{margin:0}header{background:#2b1715;color:white;padding:23px 18px 19px}header .inner,main{max-width:900px;margin:auto}header small{letter-spacing:2px;color:#f5d7cf}h1{font-size:27px;margin:3px 0}header p{margin:0;color:#f8eae8;font-size:13px}main{padding:16px 14px 90px}.tabs{display:flex;gap:6px;margin:0 0 16px}.tabs button{flex:1;background:white;color:#812039;border:1px solid #e8ddd9;padding:11px 4px;font-weight:700;border-radius:9px}.tabs button.active{background:#98132d;color:white}section{display:none}section.active{display:block}.panel{background:white;border:1px solid #e8ded9;border-radius:14px;padding:17px;margin-bottom:13px;box-shadow:0 2px 8px #2b17150b}h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:15px 0 8px;color:#98132d}label{font-size:13px;font-weight:650;display:block;margin:8px 0 6px}textarea,input,select{width:100%;border:1px solid #d6c8c3;border-radius:9px;padding:12px;font:inherit;background:#fff;color:#32221f}textarea{min-height:180px;resize:vertical}button{font:inherit;cursor:pointer}button.primary{border:0;background:#98132d;color:white;padding:12px 15px;border-radius:9px;font-weight:700}button.secondary{border:1px solid #bd9ca5;background:white;color:#812039;padding:11px 14px;border-radius:9px;font-weight:700}button.danger{border:1px solid #cbaaaa;color:#9b3333;background:white;padding:10px;border-radius:8px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.actions button{flex:1}.hint{color:#786b67;font-size:12px;line-height:1.5}.checks{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.checks label{margin:0;display:flex;align-items:center;gap:8px;border:1px solid #e8ddd9;border-radius:9px;padding:10px;font-size:13px}.checks input{width:auto;accent-color:#98132d}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.row{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px solid #eee5e1}.row .name{font-size:13px;flex:1}.row input{width:105px;padding:8px;text-align:right}.pill{font-size:11px;background:#f7e6e9;border-radius:99px;padding:4px 8px;color:#98132d}.warning{background:#fff6df;border:1px solid #e7d19b;color:#76541e;border-radius:8px;padding:10px;font-size:12px;margin:8px 0}.success{background:#e8f2e9;border-radius:8px;padding:10px;font-size:13px}.preview{white-space:pre-wrap;font:13px/1.6 ui-monospace,SFMono-Regular,monospace;background:#faf5f3;border-radius:10px;padding:14px;max-height:330px;overflow:auto}.muted{color:#766c68;font-size:13px}.hidden{display:none!important}.record{padding:11px;border-bottom:1px solid #eee5e1}.record strong{display:block}.record small{color:#766c68}.footer{font-size:11px;text-align:center;color:#8a7c76;margin-top:20px}@media(max-width:450px){.grid{grid-template-columns:1fr}.row input{width:88px}.actions button{min-width:120px}}
@@ -75,7 +72,136 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
 <script>
 function GH_openWhatsApp(text){
   const msg=String(text||'');
-  if(!msg.trim()){alert('…3297 tokens truncated…f selected('units')){let items=groups(list.filter(e=>e.unit===u));if(items.length){lines.push('',`*${UNITS[u]} (${u})*`);items.forEach(x=>lines.push(fmtItem(x)));}}}if(mode!=='units'){let items=groups(list);lines.push('');items.forEach(x=>lines.push(fmtItem(x)));}return lines.join('\n');}
+  if(!msg.trim()){alert('Não há mensagem para enviar.');return;}
+  // Navegação na mesma aba: evita bloqueio de pop-ups no Chrome/Android.
+  // WhatsApp escolhe o destinatário; o usuário confirma o envio.
+  window.open('https://api.whatsapp.com/send?text='+encodeURIComponent(msg),'_blank','noopener,noreferrer');
+}
+</script>
+<script>
+const UNITS={S1:'Stretto',G1:'Casa Guedes Tradicional',G2:'Casa Guedes Rooftop',G4:'Casa Guedes Progresso',G5:'Casa Guedes Oliveiras',G7:'Casa Guedes Gaia'};
+const GH59_MOLHO_MAX_LITROS=300; // Teto diario de pedidos, todas as casas.
+const CATS=['Francesinha','Salgados','Cozinha','Pernil','Sobremesas','Molhos','Outros','Produtos'];
+// Conversões de apresentações conhecidas; o catálogo completo é consultado por unidade.
+const CATALOG=[
+ ['Base de Cachorro',20,'un',/\bbase\s*(?:de\s*)?cachorro\b/i],
+ ['Base Tradicional',40,'un',/\bbase\s*(?:de\s*)?(?:francesinha\s*)?tradicional\b/i],
+ ['Base Guedes',40,'un',/\bbase\s*(?:de\s*)?(?:francesinha\s*)?guedes\b/i],
+ ['Molho Francesinha',30,'L',/\bmolho\s*(?:de\s*)?francesinha\b/i],
+ ['Gouda Fatiado 9 kg',9,'kg',/\b(?:queijo\s*)?(?:gouda|golden)\s*fatiado\s*(?:9\s*(?:kg|k|quilos?))\b/i],
+ ['Gouda Fatiado 11 kg',11,'kg',/\b(?:queijo\s*)?(?:gouda|golden)\s*fatiado\s*(?:11\s*(?:kg|k|quilos?))\b/i],
+ ['Zé do Porto',1,'kg',/\b(?:ze|zé)\s*do\s*porto\b|\b(?:queijo\s*)?(?:gouda|golden)\s*ralado\b/i]
+];
+
+let showEmptyItems=false;
+let previewOpen=false;
+
+let entries=[], raw='', deferredInstall=null;
+const $=id=>document.getElementById(id), esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const normalize=s=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+const catKey=s=>{let n=normalize(s);if(n==='francesinha')return 'Francesinha';if(n==='salgados')return 'Salgados';if(n==='cozinha')return 'Cozinha';if(n==='pernil')return 'Pernil';if(n==='sobremesas')return 'Sobremesas';if(n==='molhos')return 'Molhos';if(n==='outros')return 'Outros';if(n==='produtos')return 'Produtos';return null};
+const getUnit=s=>{let n=normalize(s);let code=n.match(/\b(?:g[12457]|s1)\b/i);if(code)return code[0].toUpperCase();if(n.includes('stretto'))return 'S1';if(n.includes('rooftop'))return 'G2';if(n.includes('gaia'))return 'G7';if(n.includes('tradicional'))return 'G1';if(n.includes('progresso'))return 'G4';if(n.includes('oliveiras'))return 'G5';return null};
+function parseAmount(s){s=s.trim().replace(/\s*(?:🆘|✅|✔️).*$/u,'').trim();if(!s||s==='-'||/^ok$/i.test(s))return {value:null,unit:'',note:'Sem quantidade informada'};let mix=s.match(/^(\d+)\s*\+\s*(\d+)\s*\/\s*(\d+)/);if(mix)return {value:+mix[1]+(+mix[2]/+mix[3]),unit:'',note:'Fração'};let mixed=s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)\s*$/);if(mixed)return {value:+mixed[3]>0?+mixed[1]+(+mixed[2]/+mixed[3]):null,unit:'',note:'Fração'};let frac=s.match(/^(\d+)\s*\/\s*(\d+)/);if(frac)return {value:+frac[2]>0?+frac[1]/+frac[2]:null,unit:'',note:'Fração'};let m=s.match(/^([\d.,]+)\s*(.*)$/);if(!m)return {value:null,unit:'',note:'Formato não reconhecido'};let num=m[1];if(num.includes(',')&&num.includes('.'))num=num.replace(/\./g,'').replace(',','.');else if(num.includes(','))num=num.replace(',','.');else if(/^\d{1,3}\.\d{3}$/.test(num))num=num.replace('.','');let value=Number(num);if(!Number.isFinite(value))return {value:null,unit:'',note:'Valor inválido'};let u=normalize(m[2]);let emergency=/\bsos\b/.test(u);let unit=/\b(?:bidon|bidons|bidao|bidoes|bidoes|bidoes)\b/.test(u)?'bidão':/\b(?:caixas?|cx)\b/.test(u)?'caixa':/\b(?:litros?|l)\b/.test(u)?'L':/\b(?:quilos?|kg|k)\b/.test(u)?'kg':/\b(?:unidades?|un|uds)\b/.test(u)?'un':'';return {value,unit,note:emergency?'Aviso SOS identificado; conferir unidade original.':''}};
+const PRODUCT_ALIASES={
+ 'bolo de bolacha':'Bolo Bolacha', 'bolo de cenoura de pote':'Bolo Cenoura Pote',
+ 'mousse de chocolate':'Mousse', 'sal de camarrao':'Sal de Camarão',
+ 'molho de prego':'Molho Prego', 'panadinho':'Panadinho de Frango',
+ 'alcatra':'Alcatra 100g', 'hamburguer':'Hamburguer 150g',
+ 'bol bac c/queijo':'Bol Bacalhau c/ Queijo', 'rissol pernil':'Rissol Pernil Cebola',
+ 'rissol tomate':'Rissol de Tomate'
+};
+function resolve(name,amount,unit){
+ const n=normalize(name),a=amount.value;
+ if(/\b(?:queijo\s*)?(?:gouda|golden)\s*fatiado\b/.test(n)){
+  const explicit=/11\s*(?:kg|k|quilos?)/i.test(name)?11:/9\s*(?:kg|k|quilos?)/i.test(name)?9:null;
+  let choice=explicit;
+  if(!choice&&a!==null){const n9=Number.isInteger(a/9),n11=Number.isInteger(a/11);if(n9&&!n11)choice=9;else if(n11&&!n9)choice=11;}
+  if(!choice)return {name:'Queijo Gouda Fatiado',factor:null,unit:amount.unit||'kg',warning:'Apresentação de 9 ou 11 kg não identificada; conferir. Peso preservado sem conversão em caixas.'};
+  return {name:`Gouda Fatiado ${choice} kg`,factor:choice,unit:'kg',warning:explicit?'':'Apresentação inferida pelo peso; conferir.'};
+ }
+ const item=CATALOG.find(x=>x[3].test(name));
+ if(item)return {name:item[0],factor:item[1],unit:item[2],warning:''};
+ const canonical=PRODUCT_ALIASES[n]||name.trim();
+ const key=normalize(canonical);
+ const catalog=window.GH48Catalog?.get(unit,window.GH48Catalog.base(unit))||[];
+ for(const [category,products] of catalog){
+  const product=products.find(p=>normalize(PRODUCT_ALIASES[normalize(p)]||p)===key);
+  if(product)return {name:PRODUCT_ALIASES[normalize(product)]||product,factor:null,unit:amount.unit||'',category,warning:''};
+ }
+ return {name:canonical,factor:null,unit:amount.unit||'',warning:'Produto fora do catálogo desta unidade; nome e quantidade preservados para conferência.'};
+}
+function convert(e){
+ if(e.value===null)return {qty:null,pack:null,warning:e.warning||'Quantidade não informada'};
+ let v=e.value,unit=e.rawUnit,f=e.factor,warning=e.warning||'';
+ if(unit==='caixa'&&f&&e.measure!=='L')v*=f;
+ else if(unit==='bidão'&&e.name==='Molho Francesinha')v*=30;
+ else if(unit==='bidão')warning+=' Bidão sem capacidade cadastrada para este produto: conferir unidade. ';
+ else if(e.measure==='L'&&unit==='kg')warning+=' Unidade de massa em produto líquido: conferir. ';
+ else if(e.measure==='L'&&unit==='caixa')warning+=' Caixa sem conversão válida para produto líquido: conferir. ';
+ else if(e.name==='Molho Francesinha'&&!unit&&/\bSOS\b/i.test(e.rawValue)){warning+=' Pedido urgente SOS interpretado em litros; confirmar com a unidade. ';}
+ else if(e.name==='Molho Francesinha'&&!unit){
+  if(v>10&&v%30===0)warning+=' Sem unidade: interpretado em litros (múltiplo de 30 L). Confira com a unidade. ';
+  else if(v>10){warning+=' Sem unidade: valor ambíguo acima de 10 bidões. Confirme e edite em litros. ';return {qty:v,pack:v/30,warning:warning.trim(),reviewRequired:true};}
+  else {v*=30;warning+=' Sem unidade: interpretado em bidões de 30 L. ';}
+ }
+ else if(e.measure==='L'&&!unit)warning+=' Quantidade sem unidade: interpretada em litros. ';
+ else if(e.measure==='kg'&&!unit)warning+=' Quantidade sem unidade: interpretada em kg. ';
+ // Não converter "1 L" automaticamente em 30 L: isso altera um dado explícito.
+ return {qty:v,pack:f?v/f:null,warning:warning.trim()};
+}
+function isExcludedFrancesinhaBacon(e){return normalize(e?.category||'')==='francesinha'&&normalize(e?.name||'')==='bacon caramelizado';}
+function parse(text){let result=[],unit=null,section=null,category=null,date=null;for(let line of text.split(/\r?\n/)){let s=line.replace(/^\[\d{1,2}\/\d{1,2}[^\]]*\]\s*[^:]+:\s*/,'').replace(/\*/g,'').trim();if(!s||/^[-─━_]{3,}$/.test(s))continue;let newUnit=/(?:CASA\s+GUEDES|STRETTO)/i.test(s)?getUnit(s):null;if(newUnit){unit=newUnit;section=null;category=null;date=null;continue;}let d=s.match(/^dia\s*:\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i);if(d){let year=d[3]?Number(d[3]):new Date().getFullYear();if(year<100)year+=2000;date=`${year}-${d[2].padStart(2,'0')}-${d[1].padStart(2,'0')}`;continue;}if(/^contagem\s*:/i.test(s)){section='CONTAGEM';category=null;continue;}if(/^pedidos?\s*:/i.test(s)){section='PEDIDOS';category=null;continue;}let c=catKey(s.replace(/\s*:\s*$/,''));if(c){category=c;continue;}if(!unit||!section)continue;let m=s.match(/^(.+?)\s*-\s*(.*?)\s*$/);if(!m||!m[1].trim())continue;let amount=parseAmount(m[2]),resolved=resolve(m[1],amount,unit);if(!resolved)continue;let e={id:crypto.randomUUID?.()||String(Date.now()+Math.random()),unit,date:date||new Date().toISOString().slice(0,10),section,category:category||resolved.category||(unit==='S1'?'Produtos':'Outros'),originalName:m[1].trim(),rawValue:m[2],rawUnit:amount.unit,value:amount.value,name:resolved.name,factor:resolved.factor,measure:resolved.unit,warning:resolved.warning||amount.note};if(isExcludedFrancesinhaBacon(e))continue;let conv=convert(e);e.qty=conv.qty;e.warning=conv.warning;e.reviewRequired=!!conv.reviewRequired;result.push(e);}return result;}
+function selections(id,values,selected){$(id).innerHTML=values.map(v=>`<label><input type="checkbox" value="${esc(v)}" ${selected.includes(v)?'checked':''}>${esc(v)}</label>`).join('');$(id).querySelectorAll('input').forEach(x=>x.addEventListener('change',render));}
+function selected(id){return [...$(id).querySelectorAll('input:checked')].map(x=>x.value)}
+function filtered(){return entries.filter(e=>e.section===$('section').value&&selected('categories').includes(e.category)&&selected('units').includes(e.unit)&&!isExcludedFrancesinhaBacon(e));}
+const format=n=>n===null?'—':Number(n.toFixed(3)).toLocaleString('pt-PT',{maximumFractionDigits:3});
+function render(){updatePreview();}
+function previewEditor(){
+ const list=filtered();if(!list.length)return '<p class="muted">Nenhum pedido encontrado para os filtros selecionados.</p>';
+ let byUnit={};for(let e of list)(byUnit[e.unit]??=[]).push(e);
+ let html='';html+='<label style="display:flex;align-items:center;gap:8px;margin:10px 0 16px"><input type="checkbox" id="showEmptyItems" style="width:auto" '+(showEmptyItems?'checked':'')+'> Mostrar produtos sem quantidade para editar</label>';
+ for(let [u,items] of Object.entries(byUnit)){
+   if(!showEmptyItems&&!items.some(e=>e.qty>0))continue;
+   html+='<h3>'+esc(UNITS[u])+' ('+esc(u)+')</h3>';
+   for(let e of items){
+     if(!showEmptyItems&&(e.qty===null||e.qty<=0))continue;
+     const suffix=e.measure==='L'?' L':e.measure==='kg'?' kg':e.measure?' '+esc(e.measure):'';
+     html+='<div class="preview-line"><label for="qty-'+esc(e.id)+'">'+esc(e.name)+(e.warning?'<small class="hint" style="display:block">'+esc(e.warning)+'</small>':'')+'</label><div class="preview-control"><input id="qty-'+esc(e.id)+'" type="number" inputmode="decimal" min="0" step="any" data-id="'+esc(e.id)+'" value="'+(e.qty??'')+'" placeholder="—" aria-label="Quantidade de '+esc(e.name)+' em '+esc(UNITS[u])+'"><span>'+suffix+'</span></div></div>';
+   }
+ }
+ return html;
+}
+
+// Validação global por data, independente dos filtros de visualização.
+function gh59MolhoErrors(list){
+ const totals=new Map(),issues=[];
+ for(const e of (Array.isArray(list)?list:[])){
+  if(e?.section!=='PEDIDOS'||e.name!=='Molho Francesinha')continue;
+  const day=e.date||'sem data',unit=e.unit||'unidade desconhecida';
+  if(e.reviewRequired)issues.push(unit+' ('+day+'): quantidade sem unidade ambígua. Confirme os litros na conferência.');
+  if(e.qty===null||e.qty===undefined)continue;
+  const v=Number(e.qty);
+  if(!Number.isFinite(v)||v<0){issues.push(unit+' ('+day+'): quantidade inválida.');continue;}
+  totals.set(day,(totals.get(day)||0)+v);
+ }
+ for(const [day,total] of totals)if(total>GH59_MOLHO_MAX_LITROS+1e-8)issues.push('Dia '+day+': '+format(total)+' L de Molho Francesinha nas casas. Limite: 300 L (10 bidões).');
+ return issues;
+}
+function gh59GuardMolho(list=entries){
+ if($('section').value!=='PEDIDOS')return true;
+ const issues=gh59MolhoErrors(list);
+ if(issues.length){alert('PEDIDO BLOQUEADO — MOLHO FRANCESINHA\n\n'+issues.join('\n')+'\n\nCorrija antes de salvar ou enviar.');return false;}
+ return true;
+}
+function gh59BannerMolho(){
+ const node=$('gh59MolhoAviso');
+ const issues=$('section').value==='PEDIDOS'?gh59MolhoErrors(entries):[];
+ if(issues.length){node.className='warning';node.style.whiteSpace='pre-wrap';node.textContent='PEDIDO BLOQUEADO — MOLHO FRANCESINHA\n'+issues.join('\n')+'\nCorrija os valores abaixo.';}
+ else{node.className='hint';node.textContent=$('section').value==='PEDIDOS'?'Limite de Molho Francesinha: 300 L (10 bidões) por dia, somando todas as casas.':'';}
+}
+function groups(list){let out={};for(let e of list){if(e.qty===null||e.qty<=0)continue;let k=e.name+'|'+e.measure;if(!out[k])out[k]={name:e.name,unit:e.measure,qty:0,factor:e.factor};out[k].qty+=e.qty;}return Object.values(out)}
+function fmtItem(e){let suffix=e.unit==='L'?' L':e.unit==='kg'?' kg':e.unit?' '+e.unit:'';return `• ${e.name}: ${format(e.qty)}${suffix}`}
+function buildMessage(){let list=filtered(),mode=$('mode').value;let dates=[...new Set(list.map(e=>e.date).filter(Boolean))].sort();let dateLabel=dates.length===1?dates[0].split('-').reverse().join('/'):dates.length>1?dates.map(d=>d.split('-').reverse().join('/')).join(', '):new Date().toLocaleDateString('pt-PT');let lines=[`*TOTAL GERAL — ${dateLabel}*`];if(mode!=='total'){for(let u of selected('units')){let items=groups(list.filter(e=>e.unit===u));if(items.length){lines.push('',`*${UNITS[u]} (${u})*`);items.forEach(x=>lines.push(fmtItem(x)));}}}if(mode!=='units'){let items=groups(list);lines.push('');items.forEach(x=>lines.push(fmtItem(x)));}return lines.join('\n');}
 function setPreviewOpen(open){
  previewOpen=!!open;
  $('preview').classList.toggle('hidden',!previewOpen);
