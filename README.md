@@ -138,3 +138,10 @@ Na execucao manual ou semanal, `tests/live-smoke.test.cjs` abre o **site publico
 O teste `tests/homologation.test.cjs` utiliza Chromium e a interface real servida em `127.0.0.1:8876`; substitui a API do Supabase por respostas ficticias interceptadas pelo Playwright. O teste nao autentica contas de producao, nao chama o banco real e nao envia WhatsApp. Cobre login, escolha de unidade, varredura de todos os campos visiveis do Pedido Guiado com valores validos e invalidos, conferencia, salvamento, historico, RLS simulada, acesso do administrador, alteracao conflitante em dois navegadores, exclusao logica de usuarios mantendo seus historicos e bloqueio local por quantidade acima de 300 L. O relatorio `auditoria/homologacao.json` fica no artefato da execucao do GitHub Actions.
 
 **Limitacao conhecida:** o teste intercepta a API e verifica o controle de permissao modelado, nao substitui testes RLS reais. A soma de 300 L de Molho Francesinha **entre todas as contas e em edicoes concorrentes** ainda exige uma regra transacional no banco real e outra bateria em banco de homologacao separado. Nao foi criado projeto Supabase nem alterada a base de producao.
+
+
+## Recuperação de senha
+
+- A tela inicial oferece recuperação por e-mail real cadastrado. A resposta ao pedido é genérica para não revelar se um e-mail existe.
+- O link retorna ao endereço atual do Guedes Hub; esse endereço precisa estar autorizado em Authentication > URL Configuration no Supabase.
+- A página reconhece o evento de recuperação, permite definir e confirmar uma nova senha e encerra a sessão de recuperação após salvar.
