@@ -37,6 +37,15 @@ async function route(route){const req=route.request(),u=new URL(req.url()),metho
  if(u.pathname==='/functions/v1/gh-login'){
   const b=req.postDataJSON();const who=Object.keys(profiles).find(k=>profiles[k].login_nome?.toLowerCase()===b.login.toLowerCase());if(!who||b.senha!=='123456')return json({error:'Usuário ou senha inválidos.'},401);return json({access_token:jwt(who),refresh_token:'refresh-'+who});
  }
+ if(u.pathname.startsWith('/rest/v1/rpc/')){
+  const fn=u.pathname.split('/').pop();
+  if(fn==='gh_estoque_consultar')return json({movimentos:[],responsaveis:[]});
+  if(fn==='gh_configurar_lider_estoque')return json(null);
+  if(fn==='gh_estoque_lancar')return json({movimento:req.postDataJSON()?.movimento||{},saldo:0});
+  if(fn==='gh_aprovar_pedido')return json({pedido:{id:req.postDataJSON()?.pedido,status:'aprovado'},baixas:[]});
+  if(fn==='gh_devolver_pedido')return json({pedido:{id:req.postDataJSON()?.pedido,status:'devolvido'}});
+  return json({message:'Unexpected RPC '+fn},400);
+ }
  if(u.pathname==='/functions/v1/gh-usuarios'){
   if(who!=='admin')return json({error:'Administrador necessário'},403);
   const b=req.postDataJSON();if(b.action==='listar')return json({usuarios:managed});lastUserRequest=b;
