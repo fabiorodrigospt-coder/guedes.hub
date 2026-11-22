@@ -18,3 +18,7 @@
 #settingsDialog{width:min(900px,calc(100vw - 32px))}
 #settingsDialog .supportHeading{margin-top:28px}
 @media(max-width:700px){#appNav button{text-align:center}.toolbar{flex-wrap:wrap;justify-content:flex-end}.accountSummary{flex:1}.toolbar .accountLogout{flex:0 0 auto}.toolbar .settingsGear{flex:0 0 40px}}
+
+#orderApprovalDialog{width:min(680px,calc(100% - 24px));max-height:90vh;border:0;border-radius:14px;padding:20px;color:#32221f}#orderApprovalDialog::backdrop{background:#160a0dcc}#orderApprovalLines{max-height:45vh;overflow:auto}.approvalLine{display:grid;grid-template-columns:minmax(140px,1.3fr) repeat(3,minmax(90px,1fr));gap:8px;align-items:center;padding:9px 0;border-bottom:1px solid #eee}.approvalLine small{display:block;color:#766c68;font-size:12px}.approvalLine select,.approvalLine input{min-width:0;padding:9px}@media(max-width:520px){.approvalLine{grid-template-columns:1fr 1fr}.approvalLine>div:first-child{grid-column:1/-1}}
+
+.approvalWarning{background:#fff6df;border:1px solid #e7d19b;color:#76541e;border-radius:9px;padding:11px;font-size:13px;line-height:1.5}

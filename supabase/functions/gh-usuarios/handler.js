@@ -35,11 +35,13 @@ export async function handle(req,env,fetcher=fetch){
   if(!['criar','editar'].includes(b.action))return reply({error:'Ação inválida.'},400);
   const login=b.login_nome?String(b.login_nome).trim():null;
   if(login&&!/^[A-Za-z][A-Za-z0-9._-]{2,31}$/.test(login))return reply({error:'Use de 3 a 32 caracteres no nome de acesso, começando com uma letra, sem espaços ou acentos.'},400);
-  const nome=String(b.nome||login||'').trim(),email=String(b.email||'').trim().toLowerCase(),password=b.senha;
-  if(nome.length<2||nome.length>100||!Array.isArray(b.acessos)||b.acessos.length>3||(!b.acessos.length&&b.ativo!==false))return reply({error:'Informe nome e pelo menos um módulo, ou desative a conta.'},400);
+  const nome=String(b.nome||login||'').trim(),email=String(b.email||'').trim().toLowerCase(),password=b.senha,cargo=b.cargo||'operador';
+  if(!['administrador','gestor','lider','operador'].includes(cargo))return reply({error:'Tipo de perfil inválido.'},400);
+  if(nome.length<2||nome.length>100||!Array.isArray(b.acessos)||b.acessos.length>3||(!b.acessos.length&&b.ativo!==false&&cargo!=='administrador'))return reply({error:'Sem módulos liberados, a conta operacional deve permanecer bloqueada.'},400);
   if(email&&(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)||email.endsWith('@login.guedeshub.invalid')))return reply({error:'Informe um e-mail válido ou deixe em branco.'},400);
   if(b.action==='criar'&&!email&&!login)return reply({error:'Informe o nome de acesso.'},400);
   if(b.action==='criar'&&(!password||typeof password!=='string')||password!==undefined&&password!==''&&(typeof password!=='string'||password.length<6||password.length>128))return reply({error:'Use uma senha de 6 a 128 caracteres.'},400);
+  if(cargo==='administrador'&&(b.action!=='criar'||!email||!password||password.length<12||b.unidade_codigo||b.acessos.length))return reply({error:'Administrador só pode ser criado como conta nova, com e-mail real, senha única de pelo menos 12 caracteres e sem escopo de unidade.'},400);
   const modules=new Set();
   for(const a of b.acessos){
    if(!a||!['pedidos','producao','salgados'].includes(a.modulo)||modules.has(a.modulo)||!['proprios','unidade','selecionadas','todos'].includes(a.leitura)||!['nenhum','proprios','unidade','selecionadas','todos'].includes(a.edicao)||typeof a.criar!=='boolean'||!Array.isArray(a.unidades)||a.unidades.length>20||a.unidades.some(u=>typeof u!=='string'))return reply({error:'Permissões inválidas.'},400);
@@ -58,7 +60,7 @@ export async function handle(req,env,fetcher=fetch){
    if(!c.ok)return reply({error:c.status===422||c.status===409?'E-mail já cadastrado ou senha recusada. Confira a lista antes de tentar novamente.':'Não foi possível criar a conta.'},c.status===422||c.status===409?409:500);
    target=c.data?.id;if(!uuid(target))return reply({error:'Resposta de cadastro inválida. Confira a lista antes de repetir.'},500);created=true;
   }
-  const config=await api('/rest/v1/rpc/gh_configurar_usuario_login','POST',{ator:actor,alvo:target,nome_novo:nome,casa_nova:b.unidade_codigo||null,ativo_novo:b.ativo!==false,acessos_novos:b.acessos,revisao_esperada:created?null:b.revisao_acesso,login_novo:login});
+  const config=await api('/rest/v1/rpc/gh_configurar_usuario_perfil_login','POST',{ator:actor,alvo:target,nome_novo:nome,casa_nova:cargo==='administrador'?null:b.unidade_codigo||null,ativo_novo:cargo==='administrador'?false:b.ativo!==false,acessos_novos:cargo==='administrador'?[]:b.acessos,revisao_esperada:created?null:b.revisao_acesso,login_novo:login,cargo_novo:cargo});
   if(!config.ok){
    if(created){const cleanup=await api('/auth/v1/admin/users/'+target,'DELETE');if(!cleanup.ok)return reply({error:'O acesso não foi liberado. A conta de autenticação precisa de revisão pelo administrador antes de repetir.'},500)}
    return reply({error:config.data?.code==='23505'?'Nome de acesso já cadastrado. Consulte também os usuários excluídos para restaurar a conta.':'Permissões não foram salvas. Confira a casa, os escopos e atualize a lista antes de tentar novamente.'},409);
