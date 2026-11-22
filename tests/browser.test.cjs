@@ -35,6 +35,15 @@ async function route(route){const req=route.request(),u=new URL(req.url()),metho
   if(b.action==='criar'){managed.push({usuario_id:crypto.randomUUID(),nome:b.nome,login_nome:b.login_nome,email:b.email,unidade_codigo:b.unidade_codigo,perfil:'unidade',ativo:b.ativo,acesso_configurado:true,revisao_acesso:1,acessos:b.acessos});return json({message:'Usuário criado com os acessos definidos.'},201)}
   const target=managed.find(x=>x.usuario_id===b.usuario_id);if(b.action==='excluir'){Object.assign(target,{excluido:true,ativo:false,revisao_acesso:target.revisao_acesso+1});return json({message:'Usuário excluído. Acesso bloqueado e históricos preservados.'})}Object.assign(target,{excluido:false,login_nome:b.login_nome,nome:b.nome,ativo:b.ativo,acessos:b.acessos,revisao_acesso:target.revisao_acesso+1});return json({message:'Cadastro e permissões atualizados.'});
  }
+ if(u.pathname.startsWith('/rest/v1/rpc/')){
+  const fn=u.pathname.split('/').pop();
+  if(fn==='gh_estoque_consultar')return json({movimentos:[],responsaveis:[]});
+  if(fn==='gh_configurar_lider_estoque')return json(null);
+  if(fn==='gh_estoque_lancar')return json({movimento:req.postDataJSON()?.movimento||{},saldo:0});
+  if(fn==='gh_aprovar_pedido')return json({pedido:{id:req.postDataJSON()?.pedido,status:'aprovado'},baixas:[]});
+  if(fn==='gh_devolver_pedido')return json({pedido:{id:req.postDataJSON()?.pedido,status:'devolvido'}});
+  return json({message:'Unexpected RPC '+fn},400);
+ }
  const table=u.pathname.split('/').pop();if(!who)return json({message:'Unauthorized'},401);
  if(table==='gh_perfis')data=[profiles[who]];else if(table==='gh_unidades')data=who==='admin'?units:units.filter(u=>u.codigo===profiles[who].unidade_codigo);else data=visible(table,db[table]||[],who);
  const matches=r=>[...u.searchParams].filter(([k])=>!['select','order','limit','offset'].includes(k)).every(([k,v])=>v.startsWith('eq.')?String(r[k])===v.slice(3):true);
