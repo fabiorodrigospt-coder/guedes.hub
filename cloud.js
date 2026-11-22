@@ -2,7 +2,7 @@
 (() => {
 const URL = 'https://opixtuuscvdwmpkcbhzp.supabase.co';
 const KEY = 'sb_publishable_XnVpLzQ8ZXHxT4BLpyd1eA_s55x8zYT';
-const client = window.supabase.createClient(URL, KEY, {auth:{storageKey:'gh-online-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+const client = window.supabase.createClient(URL, KEY, {auth:{storageKey:'gh-online-auth-v1',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $ = id => document.getElementById(id);
 const HISTORY = 'gh34-pedido-guiado-historico-v1';
 const PROD = 'guedes-hub-production-v1';
@@ -11,6 +11,9 @@ const records = new Map([[HISTORY,'gh_pedidos'],[PROD,'gh_operacao_central'],[SA
 const unitKeys = new Set(['gh27-pedido-guiado-catalogo-v2','gh43-pedido-modelos-v1','gh38-politicas-estoque-v1','guedes-hub-2.2-rascunhos','guedes_hub_install_invite_dismissed_v1']);
 let user=null, profile=null, units=[], queue=[], memory=new Map(), view=new Map(), remote=new Map(), timer, flushing=false, loaded=false, frameDirty=false, revision=0, loading=false, lastSuccess='', connectionError='';
 let acessos=[],accessChanged=false;
+const recoveryQuery=new URLSearchParams(window.location.search), recoveryHash=new URLSearchParams(window.location.hash.slice(1));
+let passwordRecoveryMode=recoveryQuery.has('code')||recoveryHash.get('type')==='recovery'||sessionStorage.getItem('gh-password-recovery-mode')==='1';
+let passwordRecoverySession=false;
 const admin=()=>profile?.perfil==='administrador'&&profile?.ativo!==false;
 const moduleKey=key=>key===HISTORY?'pedidos':key===PROD?'producao':key===SAL?'salgados':null;
 function permission(modulo){if(admin())return {modulo,leitura:'todos',edicao:'todos',criar:true,unidades:units.map(u=>u.codigo)};return acessos.find(a=>a.modulo===modulo)||(!profile?.acesso_configurado&&profile?.perfil==='unidade'&&modulo==='pedidos'?{modulo,leitura:'proprios',edicao:'proprios',criar:true,unidades:[]}:null);}
@@ -207,7 +210,7 @@ async function initialize(account){
  }catch(e){$('loginError').textContent=e.message;$('login').hidden=false;$('workspace').hidden=true;user=null;profile=null;loaded=false;}
 }
 function clearAccount(){$('settingsDialog')?.close();window.GHCloud.ready=false;loaded=false;user=null;profile=null;units=[];acessos=[];accessChanged=false;queue=[];memory=new Map();view=new Map();remote=new Map();$('appFrame').removeAttribute('src');$('appFrame').hidden=true;$('workspace').hidden=true;$('login').hidden=false;$('orderRows').replaceChildren();$('auditRows').replaceChildren();clearTimeout(timer);}
-window.GHCloud={ready:false,admin:false,unitList:[],keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report,canModule,canRecord,permission,saveState,currentName:()=>profile?.nome||'',productionSuffix:()=>admin()?'':'-P'+profile.codigo_relatorio,manageUsers:async body=>{if(!admin()||accessChanged)throw Error('Cadastro exclusivo do administrador.');const {data,error}=await client.functions.invoke('gh-usuarios',{body});if(error){let message='Não foi possível concluir o cadastro. Atualize a lista antes de repetir.';try{message=(await error.context.json()).error||message}catch{}throw Error(message)}if(data?.error)throw Error(data.error);return data;}};
+window.GHCloud={ready:false,admin:false,unitList:[],passwordRecoveryActive:()=>passwordRecoverySession,requestPasswordRecovery:async email=>{const redirectTo=window.location.origin+window.location.pathname;const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo});if(error)throw error;},updatePassword:async password=>{const {error}=await client.auth.updateUser({password});if(error)throw error;},finishPasswordRecovery:async()=>{passwordRecoveryMode=false;passwordRecoverySession=false;sessionStorage.removeItem('gh-password-recovery-mode');history.replaceState(null,'',window.location.pathname);const {error}=await client.auth.signOut({scope:'local'});if(error)throw error;},keys:()=>[...memory.keys()],get:key=>memory.get(key)??null,set:storageSet,dirty:()=>frameDirty=true,report,canModule,canRecord,permission,saveState,currentName:()=>profile?.nome||'',productionSuffix:()=>admin()?'':'-P'+profile.codigo_relatorio,manageUsers:async body=>{if(!admin()||accessChanged)throw Error('Cadastro exclusivo do administrador.');const {data,error}=await client.functions.invoke('gh-usuarios',{body});if(error){let message='Não foi possível concluir o cadastro. Atualize a lista antes de repetir.';try{message=(await error.context.json()).error||message}catch{}throw Error(message)}if(data?.error)throw Error(data.error);return data;}};
 $('loginForm').onsubmit=async e=>{e.preventDefault();$('enter').disabled=true;$('loginError').textContent='';try{const login=$('email').value.trim();let data,error;
 if(login.includes('@'))({data,error}=await client.auth.signInWithPassword({email:login,password:$('password').value}));
 else {const r=await client.functions.invoke('gh-login',{body:{login,senha:$('password').value}});if(r.error){let message='Não foi possível entrar.';try{message=(await r.error.context.json()).error||message}catch{}throw Error(message)}if(r.data?.error)throw Error(r.data.error);({data,error}=await client.auth.setSession({access_token:r.data.access_token,refresh_token:r.data.refresh_token}));}
@@ -264,9 +267,9 @@ window.addEventListener('online',()=>{connectionError='';queue.forEach(x=>{if(x.
 function persistIfUser(){if(user)persist();}
 window.addEventListener('offline',()=>{if(user)report('Sem conexão: alterações ficam pendentes neste aparelho. Não limpe os dados do navegador.');});
 window.addEventListener('beforeunload',e=>{if(queue.length||frameDirty){e.preventDefault();e.returnValue='';}});
-client.auth.onAuthStateChange((event,session)=>{if(event==='SIGNED_OUT')clearAccount();else if(session&&user&&session.user.id!==user.id)clearAccount();});
+client.auth.onAuthStateChange((event,session)=>{if(event==='PASSWORD_RECOVERY'||event==='INITIAL_SESSION'&&passwordRecoveryMode&&session){passwordRecoveryMode=true;passwordRecoverySession=true;sessionStorage.setItem('gh-password-recovery-mode','1');window.dispatchEvent(new Event('gh-password-recovery'));}if(event==='SIGNED_OUT'){passwordRecoveryMode=false;passwordRecoverySession=false;sessionStorage.removeItem('gh-password-recovery-mode');clearAccount();}else if(session&&user&&session.user.id!==user.id)clearAccount();});
 setInterval(()=>{if(loaded&&document.visibilityState==='visible'){flush();}},15000);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&loaded)flush();});
-client.auth.getUser().then(({data})=>{if(data?.user)initialize(data.user);}).catch(()=>{});
+client.auth.getUser().then(({data})=>{if(data?.user&&!passwordRecoveryMode)initialize(data.user);}).catch(()=>{});
 if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 })();
