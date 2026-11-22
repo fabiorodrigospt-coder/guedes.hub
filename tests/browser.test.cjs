@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 6889)
-Total output lines: 190
-
 const {chromium}=require('playwright');
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path');
@@ -60,7 +57,98 @@ async function route(route){const req=route.request(),u=new URL(req.url()),metho
  }
  if(method==='PATCH'){
   const filtered=data.filter(matches).filter(r=>table!=='gh_pedidos'||who==='admin'||r.status==='rascunho');
-  for(const r of filtered){Object.assign(r,bo…2889 tokens truncated…guedes-salgados-v1')),prod:JSON.parse(GHCloud.get('guedes-hub-production-v1')),models:JSON.parse(GHCloud.get('gh43-pedido-modelos-v1'))}));assert.equal(mirror.sal.length,2);assert.equal(mirror.prod.length,2);assert.equal(mirror.models[0].name,'Modelo');
+  for(const r of filtered){Object.assign(r,body);r.versao++;r.atualizado_em=new Date().toISOString();if(r.status==='enviado'&&!r.enviado_em)r.enviado_em=new Date().toISOString();writes++;}return json(filtered);
+ }
+ return json({message:'Unexpected route '+method+' '+u.pathname},400);
+}
+async function context(browser,who,useAlias=false){const ctx=await browser.newContext({serviceWorkers:'block',acceptDownloads:true,viewport:{width:1280,height:900}});await ctx.route('https://opixtuuscvdwmpkcbhzp.supabase.co/**',route);const page=await ctx.newPage();page.setDefaultTimeout(12000);const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:8765/');await page.locator('#email').fill(useAlias?profiles[who].login_nome:email[who]);await page.locator('#password').fill(useAlias?'123456':'test-password');await page.locator('#enter').click();await page.locator('#appFrame').waitFor({state:'visible'});await page.frameLocator('#appFrame').locator('#pgApp').waitFor({state:'attached'});await page.waitForTimeout(400);return {ctx,page,errors};}
+async function settled(page){try{await page.waitForFunction(()=>document.querySelector('#syncStatus').textContent.startsWith('Banco atualizado'),null,{timeout:12000});}catch(e){console.error('SYNC DEBUG',await page.evaluate(()=>({status:document.querySelector('#syncStatus').textContent,pending:document.querySelector('#pendingList').textContent,notice:document.querySelector('#notice').textContent,queue:Object.fromEntries(Object.entries(localStorage).filter(([k])=>k.includes('pendentes')))})));throw e;}}
+(async()=>{await new Promise(r=>server.listen(8765,'127.0.0.1',r));const provider=process.env.GH_TEST_CHROMIUM_MODULE?require(process.env.GH_TEST_CHROMIUM_MODULE):null;const browser=await chromium.launch(provider?{headless:true,executablePath:await provider.executablePath(),args:provider.args.filter(a=>a!=='--single-process')}:{headless:true});try{
+ const a=await context(browser,'admin');assert.deepEqual(a.errors,[],'workspace JS errors');assert.equal(await a.page.frameLocator('#appFrame').locator('#producao').count(),1);
+ assert.equal(await a.page.locator('#identity').textContent(),'Fabio · Administrador');
+ assert.equal(await a.page.locator('#refresh').isVisible(),false);
+ assert.equal(await a.page.locator('#appNav [data-target="ajustes"]').count(),0);
+ assert.equal(await a.page.locator('footer').textContent(),'Casa Guedes · acesso controlado por usuário');
+ await a.page.getByRole('button',{name:'Ajustes',exact:true}).click();
+ await a.page.locator('#settingsDialog').waitFor({state:'visible'});
+ assert.equal(await a.page.locator('#refresh').isVisible(),true);
+ assert.equal(await a.page.locator('#backup').isVisible(),true);
+ assert.equal(await a.page.locator('#operationalSettings').isVisible(),true);
+ await a.page.locator('#operationalSettings').click();
+ await a.page.frameLocator('#appFrame').locator('#ajustes').waitFor({state:'visible'});
+ await a.page.getByRole('button',{name:'Ajustes',exact:true}).click();
+ await a.page.locator('#settingsClose').click();
+
+ // Actual production form, unchanged workflow.
+ const f=a.page.frameLocator('#appFrame');
+ await a.page.locator('#appNav [data-target="guiado"]').click();await f.locator('[data-action="start"]').click();assert.equal(await f.locator('#pgUnits').getAttribute('aria-invalid'),'true');assert.equal(await f.locator('#pgModes').getAttribute('aria-invalid'),'true');await a.page.locator('#appNav [data-target="gestao"]').click();
+ await a.page.locator('#appNav [data-target="gestao"]').click();
+ await f.locator('#usrLogin').fill('GuedesG2');await f.locator('#usrName').fill('Nova pessoa');await f.locator('#usrEmail').fill('');await f.locator('#usrPassword').fill('123456');await f.locator('#usrUnit').selectOption('G2');
+ await f.locator('[data-module="pedidos"] [data-enabled]').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Usuário criado'}).waitFor();
+ assert.equal(lastUserRequest.acessos[0].leitura,'proprios');assert.equal(lastUserRequest.acessos[0].edicao,'proprios');assert.equal(lastUserRequest.unidade_codigo,'G2');assert.equal(await f.locator('#usrPassword').inputValue(),'');
+ assert.equal(await a.page.evaluate(()=>JSON.stringify({...localStorage,...sessionStorage}).includes('123456')),false);
+ await f.locator('#usrList .usrRecord').filter({hasText:'Nova pessoa'}).getByRole('button',{name:'Editar usuário'}).click();
+ await f.locator('[data-module="pedidos"] [data-read]').selectOption('selecionadas');await f.locator('[data-module="pedidos"] [data-edit]').selectOption('nenhum');await f.locator('[data-module="pedidos"] .usrHouses input[value="G4"]').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Cadastro e permissões atualizados'}).waitFor();
+ assert.equal(lastUserRequest.action,'editar');assert.equal(lastUserRequest.acessos[0].edicao,'nenhum');assert.deepEqual(lastUserRequest.acessos[0].unidades,['G4']);assert.equal('senha' in lastUserRequest,false);
+ const newRow=f.locator('#usrList .usrRecord').filter({hasText:'Nova pessoa'});a.page.once('dialog',d=>d.accept());await newRow.getByRole('button',{name:'Excluir',exact:true}).click();await f.locator('#usrStatus').filter({hasText:'Usuário excluído'}).waitFor();assert.equal(await newRow.count(),0);
+ await f.locator('#usrShowDeleted').check();await newRow.getByRole('button',{name:'Restaurar / editar'}).click();await f.locator('#usrActive').check();await f.locator('#usrSave').click();await f.locator('#usrStatus').filter({hasText:'Cadastro e permissões atualizados'}).waitFor();assert.equal(await newRow.getByRole('button',{name:'Excluir',exact:true}).count(),1);
+ // Reader must carry all categories through preview, save, reopen and cloud persistence.
+ const {synthetic}=require('./reader.test.cjs');
+ await a.page.locator('#appNav [data-target="importar"]').click();
+ await f.locator('#source').fill(process.env.GH_ORIGINAL_LIST?fs.readFileSync(process.env.GH_ORIGINAL_LIST,'utf8'):synthetic);
+ await f.locator('#parse').click();await f.locator('#mode').selectOption('total');
+ assert.equal(await f.locator('#categories input:checked').count(),8);
+ // O total geral permanece visível; somente a edição por unidade é recolhida.
+ assert.equal(await f.locator('#preview').isHidden(),true);
+ assert.equal(await f.locator('#previewTotals').isVisible(),true);
+ assert.equal(await f.locator('#previewToggle').getAttribute('aria-expanded'),'false');
+ assert.match(await f.locator('#previewSummary').innerText(),/TOTAL GERAL/);
+ assert.equal(await f.locator('#previewTotalRows .preview-total-line').count(),25);
+ assert.equal(await f.locator('#gh59MolhoAviso').isVisible(),true,'Aviso de limite visível com edição fechada');
+ assert.equal(await f.locator('#save').isVisible(),true);
+ assert.equal(await f.locator('#share').isVisible(),true);
+ await f.locator('#previewToggle').click();
+ assert.equal(await f.locator('#preview').isVisible(),true);
+ assert.equal(await f.locator('#previewToggle').getAttribute('aria-expanded'),'true');
+ assert.equal(await f.locator('#previewTotalRows .preview-total-line').count(),25);
+ const editField=f.locator('#preview input[data-id]').first();
+ const previousValue=await editField.inputValue();
+ const previousTotals=await f.locator('#previewTotalRows').innerText();
+ await editField.fill('42');
+ assert.equal(await editField.inputValue(),'42');
+ assert.notEqual(await f.locator('#previewTotalRows').innerText(),previousTotals,'Totais atualizam durante edição');
+ await f.locator('#previewToggle').click();
+ assert.equal(await f.locator('#preview').isHidden(),true);
+ assert.equal(await f.locator('#previewTotals').isVisible(),true);
+ assert.equal(await f.locator('#previewTotalRows .preview-total-line').count(),25);
+ await f.locator('#previewToggle').click();
+ assert.equal(await f.locator('#preview input[data-id]').first().inputValue(),'42');
+ await f.locator('#preview input[data-id]').first().fill(previousValue);
+ assert.equal(await f.locator('#previewTotalRows').innerText(),previousTotals,'Reverter edição restaura totais');
+ await f.locator('#previewToggle').click();
+ assert.equal(await f.locator('#preview').isHidden(),true);
+ await f.locator('#save').click();await settled(a.page);
+ const saved=JSON.parse(db.gh_documentos.find(x=>x.chave==='guedes-hub-1.1-history').valor);
+ assert.equal(new Set(saved[0].entries.filter(e=>e.qty>0).map(e=>e.name+'|'+e.measure)).size,25);
+ await a.page.locator('#appNav [data-target="historico"]').click();await f.locator('[data-open]').first().click();
+ assert.equal(await f.locator('#preview').isHidden(),true,'Histórico reaberto inicia com edição recolhida');
+ assert.equal(await f.locator('#previewTotals').isVisible(),true,'Histórico reaberto mostra o total geral');
+ assert.equal(await f.locator('#previewTotalRows .preview-total-line').count(),25);
+ await f.locator('#previewToggle').click();
+ assert.equal(await f.locator('#preview').isVisible(),true);
+ assert.equal(await f.locator('#previewTotalRows .preview-total-line').count(),25);
+await a.page.locator('#appNav [data-target="producao"]').click();await f.locator('#prodResponsible').fill('Fabio teste');await f.locator('#prodSave').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,1);assert.equal(db.gh_operacao_central[0].modulo,'producao');await f.locator('[data-prod-open]').first().click();assert.equal(await f.locator('#prodResponsible').inputValue(),'Fabio teste');
+ // Full salgados record and a configuration are routed to their respective tables.
+ await a.page.evaluate(()=>{GHCloud.set('guedes-salgados-v1',JSON.stringify([{id:'sal-teste',date:'2026-10-28',leader:'Fabio',items:[],notes:'Teste',fields:{},clean:[],layout:'visual'}]));GHCloud.set('gh43-pedido-modelos-v1',JSON.stringify([{id:'m1',name:'Modelo',unit:'G1',values:{}}]));});await settled(a.page);assert.equal(db.gh_operacao_central.length,2);assert.equal(db.gh_documentos.filter(x=>x.chave==='gh43-pedido-modelos-v1').length,1);
+ // Legacy data import preserves originals and puts missing records into the database.
+ await a.page.evaluate(()=>localStorage.setItem('guedes-hub-production-v1',JSON.stringify([{id:'prod-legado',date:'2026-10-27',number:'055/2026',responsible:'Legado',production:[],orders:[],cleaning:true,notes:'preservado',layout:'visual'}])));
+ await a.page.getByRole('button',{name:'Ajustes',exact:true}).click();a.page.once('dialog',d=>d.accept());await a.page.locator('#importLocal').click();await settled(a.page);assert.equal(db.gh_operacao_central.length,3);assert.match(await a.page.evaluate(()=>localStorage.getItem('guedes-hub-production-v1')),/prod-legado/);
+ // A lost network response must not create duplicate records on retry.
+ dropNextWrite=true;await a.page.evaluate(()=>{const rows=JSON.parse(GHCloud.get('guedes-salgados-v1'));rows.push({id:'sal-resposta-perdida',date:'2026-10-28',leader:'Fabio',items:[],notes:'',fields:{},clean:[],layout:'visual'});GHCloud.set('guedes-salgados-v1',JSON.stringify(rows));});
+ await a.page.waitForFunction(()=>document.querySelector('#pendingList').textContent.includes('Failed')||document.querySelector('#pendingList').textContent.includes('fetch'));
+ await a.page.locator('#retry').click();await settled(a.page);assert.equal(db.gh_operacao_central.filter(r=>r.dados.id==='sal-resposta-perdida').length,1);await a.page.locator('#notice').waitFor({state:'hidden'});
+ // Second device receives both modules and configuration.
+ const b=await context(browser,'admin');const mirror=await b.page.evaluate(()=>({sal:JSON.parse(GHCloud.get('guedes-salgados-v1')),prod:JSON.parse(GHCloud.get('guedes-hub-production-v1')),models:JSON.parse(GHCloud.get('gh43-pedido-modelos-v1'))}));assert.equal(mirror.sal.length,2);assert.equal(mirror.prod.length,2);assert.equal(mirror.models[0].name,'Modelo');
  // Optimistic concurrency: first editor wins; stale editor stays pending.
  await a.page.evaluate(()=>GHCloud.set('gh43-pedido-modelos-v1','[{"id":"m1","name":"A"}]'));await settled(a.page);
  await b.page.evaluate(()=>GHCloud.set('gh43-pedido-modelos-v1','[{"id":"m1","name":"B"}]'));await b.page.waitForFunction(()=>document.querySelector('#pendingList').textContent.includes('Conflito'));assert.match(db.gh_documentos.find(x=>x.chave==='gh43-pedido-modelos-v1').valor,/"A"/);
